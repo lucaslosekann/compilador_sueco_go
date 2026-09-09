@@ -1,0 +1,268 @@
+%%%VERSION 2%%%
+#Options
+GenerateScanner = true
+GenerateParser = true
+Language = Java
+ScannerName = Lexico
+ParserName = Sintatico
+SemanticName = Semantico
+ScannerCaseSensitive = true
+ScannerTable = Full
+Input = String
+Parser = SLR
+#RegularDefinitions
+
+#Tokens
+//ENTRADA E SAIDA
+KW_READ_STDIN: "std_läsa"
+KW_WRITE_STDOUT: "std_skriva"
+
+//Palavras Reservadas (0.5 ponto)
+
+//tipos de dados
+KW_INT: "heltal"
+KW_FLOAT: "flyttal"
+KW_CHAR: "tecken"
+KW_STRING: "text"
+KW_BOOL: "intelagom"
+//KW_VOID: "void"
+
+//literais booleanos
+KW_TRUE: "ja"
+KW_FALSE: "nej"
+
+//estrutura e declaracoes
+KW_TYPE: "typ"
+KW_VAR: "variabel"
+KW_CONST: "konstant"
+KW_STRUCT: "struktur"
+KW_INTERFACE: "gränssnitt"
+
+//condicionais e selecao
+KW_IF: "om"
+KW_ELSE: "annars"
+KW_SWITCH: "växla"
+KW_CASE: "fall"
+KW_DEFAULT: "standard"
+KW_FALLTHROUGH: "falla"
+
+//laco de Repeticao e desvios
+KW_FOR: "för"
+KW_WHILE: "medan"
+KW_DO: "gör"
+KW_BREAK: "fika"
+KW_CONTINUE: "fortsätt"
+KW_GOTO: "gåtill"
+
+//sub-rotinas e pacotes
+KW_FUNCTION: "funktion"
+KW_RETURN: "ge"
+KW_PACKAGE: "paket"
+KW_IMPORT: "importera"
+
+//concorrencia e operacoes
+KW_GO: "gå"
+KW_CHAN: "kanal"
+KW_SELECT: "välj"
+KW_DEFER: "dröj"
+KW_RANGE: "intervall"
+KW_MAP: "karta"
+
+//Operadores Aritméticos (1 ponto)
+ARTM_OP_PLUS: "plus"
+ARTM_OP_MINUS: "minus"
+ARTM_OP_MUL: "gånger"
+ARTM_OP_DIV: "delat"
+ARTM_OP_MOD: "rest"
+
+//Operadores Relacionais (1 ponto)
+REL_OP_GT_EQ: "störrelika"
+REL_OP_LT_EQ: "mindrelika"
+REL_OP_EQ: "lika"
+REL_OP_NOT_EQ: "olika"
+REL_OP_GT: "större"
+REL_OP_LT: "mindre"
+
+//Operadores Lógicos (1 ponto)
+LOG_OP_AND: "och"
+LOG_OP_OR: "eller"
+LOG_OP_NOT: "inte"
+
+//Operadores Bit a Bit (1 ponto)
+BIT_OP_SH_LFT: "vänster"
+BIT_OP_SH_RHT: "höger"
+BIT_OP_AND: "bitoch"
+BIT_OP_OR: "biteller"
+BIT_OP_NOT: "bitinte"
+BIT_OP_XOR: "bitxor"
+
+//Operador de atribuição
+ATTR_OP_EQ: "="
+
+//Operador de incremento/decremento
+ATTR_INCR: "++"
+ATTR_DECR: "--"
+
+//Delimitadores e Pontuadores (0.5 ponto)
+DEL_DOT: "."
+DEL_SEMICOLON: ";"
+DEL_COMMA: ","
+DEL_COLON: ":"
+DEL_PAREN_LFT: "("
+DEL_PAREN_RHT: ")"
+
+//declaração/acesso de vetor: vetor[10], vetor[i]
+DEL_SQ_BRACKET_LFT: "["
+DEL_SQ_BRACKET_RHT: "]"
+
+//inicialização de vetor: {1,2,3}
+DEL_CR_BRACKET_LFT: "{"
+DEL_CR_BRACKET_RHT: "}"
+
+//Comentários de uma linha (1 ponto)
+COMMENT: [/][/].*
+
+//Comentário de múltiplas linhas (2 pontos)
+COMMENT_MULTI_LINE: [/]\*([^\*]|\*+[^\*/])*\*+[/]
+
+//Literais (1 ponto)
+LIT_INT_HEX: 0x[0-9A-Fa-f]+
+LIT_INT_BIN: 0b[01]+
+LIT_FLOAT: [0-9]+\.[0-9]+
+LIT_INT_DEC: [0-9]+
+LIT_CHAR: '.'
+LIT_STRING: \"(\\.|[^\"\\])*\"
+
+//Identificadores (1 ponto)
+ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
+
+//Espaços em branco (ignorado)
+: [\s\n\r\t]+
+#NonTerminals
+<stmt_list>
+<stmt>
+<scope>
+<typed_id>
+<typed_id_list>
+<fn_decl>
+<fn_call>
+<call_read_std>
+<call_write_std>
+<fn_call_stmt>
+<for>
+<do_while>
+<while>
+<conditional>
+<conditional_with_else>
+<type>
+<int>
+<type_with_array>
+<id_list>
+<var_decl>
+<var_decl_end>
+<attr_id_list>
+<var_attr>
+<var_attr_stmt>
+<incr_prefix>
+<decr_prefix>
+<incr_postfix>
+<decr_postfix>
+<any_incr_decr>
+<any_incr_decr_stmt>
+<id_id_array_idx>
+<exp_list>
+<exp>
+<exp1>
+<exp2>
+<exp3>
+<exp4>
+<exp5>
+<exp6>
+<exp7>
+<exp8>
+<exp9>
+<exp10>
+<op_rel>
+<op_neg>
+<op_bitwise>
+<op_arit_baixa>
+<op_arit_alta>
+#Grammar
+//Statement
+<stmt_list> ::= <stmt_list> <stmt> | <stmt>;
+<stmt> ::=  <var_decl> | <conditional> | <conditional_with_else> | <do_while> | <while> | <for> | <var_attr_stmt> | <fn_call_stmt> | <any_incr_decr_stmt> | <fn_decl> | <scope>;
+
+
+<scope> ::= DEL_CR_BRACKET_LFT <stmt_list> DEL_CR_BRACKET_RHT | DEL_CR_BRACKET_LFT DEL_CR_BRACKET_RHT;
+
+//FUNCTION DECLARATION
+<typed_id> ::= ID <type_with_array>;
+<typed_id_list> ::= <typed_id_list> DEL_COMMA <typed_id> | <typed_id>;
+<fn_decl> ::= KW_FUNCTION ID DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <type_with_array> <scope>;
+
+//FUNCTION CALL
+<fn_call> ::= ID DEL_PAREN_LFT DEL_PAREN_RHT;
+
+//READ STDIN
+<call_read_std> ::= KW_READ_STDIN DEL_PAREN_LFT DEL_PAREN_RHT;
+
+//WRITE STDOUT
+<call_write_std> ::= KW_WRITE_STDOUT DEL_PAREN_LFT <exp> DEL_PAREN_RHT;
+
+<fn_call_stmt> ::= <fn_call> DEL_SEMICOLON | <call_read_std> DEL_SEMICOLON | <call_write_std> DEL_SEMICOLON;
+
+//FOR
+<for> ::= KW_FOR <var_decl> <exp> DEL_SEMICOLON  <any_incr_decr> <scope> ;
+
+//DO WHILE
+<do_while> ::= KW_DO <scope> KW_WHILE <exp> DEL_SEMICOLON;
+
+//WHILE
+<while> ::= KW_WHILE <exp> <scope>;
+
+//IF/ELSE
+<conditional> ::= KW_IF <exp> <scope>;
+<conditional_with_else> ::= <conditional> KW_ELSE <scope>;
+
+//VAR DECLARATION
+<type> ::= KW_INT | KW_FLOAT | KW_CHAR | KW_STRING | KW_BOOL;
+<int> ::= LIT_INT_DEC | LIT_INT_HEX | LIT_INT_BIN;
+<type_with_array> ::= <type> | DEL_SQ_BRACKET_LFT <int> DEL_SQ_BRACKET_RHT <type>;
+<id_list> ::= <id_list> DEL_COMMA ID | ID;
+<var_decl> ::= KW_VAR <id_list> <type_with_array> <var_decl_end>;
+<var_decl_end> ::= DEL_SEMICOLON | ATTR_OP_EQ <exp_list> DEL_SEMICOLON;
+
+//VAR ATTRIBUTION
+<attr_id_list> ::= <attr_id_list> DEL_COMMA <id_id_array_idx> | <id_id_array_idx>;
+<var_attr> ::= <attr_id_list> ATTR_OP_EQ <exp_list>;
+<var_attr_stmt> ::= <var_attr> DEL_SEMICOLON;
+//EXP
+
+<incr_prefix> ::= ATTR_INCR ID;
+<decr_prefix> ::= ATTR_DECR ID;
+<incr_postfix> ::= ID ATTR_INCR;
+<decr_postfix> ::= ID ATTR_DECR;
+<any_incr_decr> ::= <incr_prefix> | <decr_prefix> | <incr_postfix> | <decr_postfix>;
+<any_incr_decr_stmt> ::= <any_incr_decr> DEL_SEMICOLON;
+<id_id_array_idx> ::= ID | ID DEL_SQ_BRACKET_LFT <exp> DEL_SQ_BRACKET_RHT;
+<exp_list> ::= <exp_list> DEL_COMMA <exp> | <exp>;
+<exp>  ::= <exp> LOG_OP_OR <exp1> | <exp1>;
+<exp1> ::= <exp1> LOG_OP_AND <exp2> | <exp2>;
+<exp2> ::= <exp2> BIT_OP_OR <exp3> | <exp3>;
+<exp3> ::= <exp3> BIT_OP_XOR <exp4> | <exp4>;
+<exp4> ::= <exp4> BIT_OP_AND <exp5> | <exp5>;
+<exp5> ::= <exp5> <op_rel> <exp6> | <exp6>;
+<exp6> ::= <exp6> <op_bitwise> <exp7> | <exp7>;
+<exp7> ::= <exp7> <op_arit_baixa> <exp8> | <exp8>;
+<exp8> ::= <exp8> <op_arit_alta> <exp9> | <exp9> ;
+<exp9> ::= <op_neg> <exp10> | <exp10>;
+<exp10> ::= LIT_INT_HEX | LIT_INT_BIN | LIT_INT_DEC | LIT_FLOAT | LIT_INT_DEC | LIT_CHAR | LIT_STRING 
+| KW_TRUE | KW_FALSE | <fn_call> | <call_read_std> | <call_write_std> | <any_incr_decr> | <id_id_array_idx> | DEL_PAREN_LFT <exp> DEL_PAREN_RHT;
+
+<op_rel> ::= REL_OP_GT_EQ | REL_OP_LT_EQ | REL_OP_EQ | REL_OP_NOT_EQ | REL_OP_GT | REL_OP_LT;
+<op_neg> ::= ARTM_OP_MINUS | BIT_OP_NOT | LOG_OP_NOT;
+<op_bitwise> ::= BIT_OP_SH_LFT | BIT_OP_SH_RHT;
+<op_arit_baixa> ::= ARTM_OP_PLUS | ARTM_OP_MINUS;
+<op_arit_alta> ::= ARTM_OP_MUL | ARTM_OP_DIV | ARTM_OP_MOD;
+#SimulatorText
+b20gMSBvY2ggMSB7CiAgdmFyaWFiZWwgdmFyLHMsZyBbMHgxQTAxMF1oZWx0YWwgPSAxLCBjWzIgcGx1cyAyXTsKfQoKCmFubmFyc3sKCgogIHZhcmlhYmVsIHZhcixzLGcgWzB4MUEwMTBdaGVsdGFsID0gMSwgY1syIHBsdXMgMl07Cn0KCm1lZGFuIGphIHsKICB2YXJpYWJlbCB2YXIscyxnIFsweDFBMDEwXWhlbHRhbCA9IDEsIGNbMiBwbHVzIDJdOwp9Cgpn9nIgewogIHZhcmlhYmVsIHZhcixzLGcgWzB4MUEwMTBdaGVsdGFsID0gMSwgY1syIHBsdXMgMl07Cn0gbWVkYW4gamE7Cgpm9nIgdmFyaWFiZWwgaSBoZWx0YWwgPSAwOyAoaSBtaW5kcmUgMTApOyBpKysgewogIHZhcmlhYmVsIHZhcixzLGcgWzB4MUEwMTBdaGVsdGFsID0gMSwgY1syIHBsdXMgMl07Cn0KCnRlc3RlKCk7CnN0ZF9s5HNhKCk7Cgp2YXJpYWJlbCB0ZXN0ZSB0ZXh0ID0gc3RkX2zkc2EoKTsKCnN0ZF9za3JpdmEoMSBwbHVzIDIpOwoKZnVua3Rpb24gbm9tZURhRnVuY2FvKHBhcmFtZXRybzEgdGV4dCwgcGFyYW1ldHJvMiBoZWx0YWwpIGludGVsYWdvbSB7CiAKfQo=
