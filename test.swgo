@@ -1,0 +1,33 @@
+om 1 och 1 {
+  variabel var,s,g [0x1A010]heltal = 1, c[2 plus 2];
+}
+
+
+annars{
+
+
+  variabel var,s,g [0x1A010]heltal = 1, c[2 plus 2];
+}
+
+medan ja {
+  variabel var,s,g [0x1A010]heltal = 1, c[2 plus 2];
+}
+
+gör {
+  variabel var,s,g [0x1A010]heltal = 1, c[2 plus 2];
+} medan ja;
+
+för variabel i heltal = 0; (i mindre 10); i++ {
+  variabel var,s,g [0x1A010]heltal = 1, c[2 plus 2];
+}
+
+teste();
+std_läsa();
+
+variabel teste text = std_läsa();
+
+std_skriva(1 plus 2);
+
+funktion nomeDaFuncao(parametro1 text, parametro2 heltal) intelagom {
+ 
+}

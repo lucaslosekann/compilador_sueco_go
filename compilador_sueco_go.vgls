@@ -2,10 +2,11 @@
 #Options
 GenerateScanner = true
 GenerateParser = true
-Language = Java
+Language = C++
 ScannerName = Lexico
 ParserName = Sintatico
 SemanticName = Semantico
+Package = GalsGenerated
 ScannerCaseSensitive = true
 ScannerTable = Full
 Input = String
@@ -264,5 +265,6 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 <op_bitwise> ::= BIT_OP_SH_LFT | BIT_OP_SH_RHT;
 <op_arit_baixa> ::= ARTM_OP_PLUS | ARTM_OP_MINUS;
 <op_arit_alta> ::= ARTM_OP_MUL | ARTM_OP_DIV | ARTM_OP_MOD;
+
 #SimulatorText
 b20gMSBvY2ggMSB7CiAgdmFyaWFiZWwgdmFyLHMsZyBbMHgxQTAxMF1oZWx0YWwgPSAxLCBjWzIgcGx1cyAyXTsKfQoKCmFubmFyc3sKCgogIHZhcmlhYmVsIHZhcixzLGcgWzB4MUEwMTBdaGVsdGFsID0gMSwgY1syIHBsdXMgMl07Cn0KCm1lZGFuIGphIHsKICB2YXJpYWJlbCB2YXIscyxnIFsweDFBMDEwXWhlbHRhbCA9IDEsIGNbMiBwbHVzIDJdOwp9Cgpn9nIgewogIHZhcmlhYmVsIHZhcixzLGcgWzB4MUEwMTBdaGVsdGFsID0gMSwgY1syIHBsdXMgMl07Cn0gbWVkYW4gamE7Cgpm9nIgdmFyaWFiZWwgaSBoZWx0YWwgPSAwOyAoaSBtaW5kcmUgMTApOyBpKysgewogIHZhcmlhYmVsIHZhcixzLGcgWzB4MUEwMTBdaGVsdGFsID0gMSwgY1syIHBsdXMgMl07Cn0KCnRlc3RlKCk7CnN0ZF9s5HNhKCk7Cgp2YXJpYWJlbCB0ZXN0ZSB0ZXh0ID0gc3RkX2zkc2EoKTsKCnN0ZF9za3JpdmEoMSBwbHVzIDIpOwoKZnVua3Rpb24gbm9tZURhRnVuY2FvKHBhcmFtZXRybzEgdGV4dCwgcGFyYW1ldHJvMiBoZWx0YWwpIGludGVsYWdvbSB7CiAKfQo=
