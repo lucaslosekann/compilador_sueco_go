@@ -199,10 +199,11 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 //FUNCTION DECLARATION
 <typed_id> ::= ID <type_with_array>;
 <typed_id_list> ::= <typed_id_list> DEL_COMMA <typed_id> | <typed_id>;
-<fn_decl> ::= KW_FUNCTION ID DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <type_with_array> <scope>;
+<fn_decl> ::= KW_FUNCTION ID DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <type_with_array> <scope>
+           | KW_FUNCTION ID DEL_PAREN_LFT DEL_PAREN_RHT <type_with_array> <scope>;
 
 //FUNCTION CALL
-<fn_call> ::= ID DEL_PAREN_LFT DEL_PAREN_RHT;
+<fn_call> ::= ID DEL_PAREN_LFT DEL_PAREN_RHT | ID DEL_PAREN_LFT <exp_list> DEL_PAREN_RHT;
 
 //READ STDIN
 <call_read_std> ::= KW_READ_STDIN DEL_PAREN_LFT DEL_PAREN_RHT;
