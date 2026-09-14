@@ -147,6 +147,7 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 <typed_id_list>
 <fn_decl>
 <fn_call>
+<return_stmt>
 <call_read_std>
 <call_write_std>
 <fn_call_stmt>
@@ -191,7 +192,7 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 #Grammar
 //Statement
 <stmt_list> ::= <stmt_list> <stmt> | <stmt>;
-<stmt> ::=  <var_decl> | <conditional> | <conditional_with_else> | <do_while> | <while> | <for> | <var_attr_stmt> | <fn_call_stmt> | <any_incr_decr_stmt> | <fn_decl> | <scope>;
+<stmt> ::=  <var_decl> | <conditional> | <conditional_with_else> | <do_while> | <while> | <for> | <var_attr_stmt> | <fn_call_stmt> | <any_incr_decr_stmt> | <fn_decl> | <scope> | <return_stmt>;
 
 
 <scope> ::= DEL_CR_BRACKET_LFT <stmt_list> DEL_CR_BRACKET_RHT | DEL_CR_BRACKET_LFT DEL_CR_BRACKET_RHT;
@@ -200,10 +201,15 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 <typed_id> ::= ID <type_with_array>;
 <typed_id_list> ::= <typed_id_list> DEL_COMMA <typed_id> | <typed_id>;
 <fn_decl> ::= KW_FUNCTION ID DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <type_with_array> <scope>
-           | KW_FUNCTION ID DEL_PAREN_LFT DEL_PAREN_RHT <type_with_array> <scope>;
+           | KW_FUNCTION ID DEL_PAREN_LFT DEL_PAREN_RHT <type_with_array> <scope>
+           | KW_FUNCTION ID DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <scope>
+           | KW_FUNCTION ID DEL_PAREN_LFT DEL_PAREN_RHT <scope>;
 
 //FUNCTION CALL
 <fn_call> ::= ID DEL_PAREN_LFT DEL_PAREN_RHT | ID DEL_PAREN_LFT <exp_list> DEL_PAREN_RHT;
+
+//RETURN
+<return_stmt> ::= KW_RETURN <exp> DEL_SEMICOLON | KW_RETURN DEL_SEMICOLON;
 
 //READ STDIN
 <call_read_std> ::= KW_READ_STDIN DEL_PAREN_LFT DEL_PAREN_RHT;
