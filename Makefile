@@ -37,7 +37,9 @@ update-generated:
 	test -f "$$stage_dir/Sintatico.h" && test -f "$$stage_dir/Sintatico.cpp" || \
 	{ echo "ZIP invalido: arquivos gerados esperados nao foram encontrados na raiz" >&2; exit 1; }; \
 	rm -rf "$(GENERATED_DIR)"; \
-	mv "$$stage_dir" "$(GENERATED_DIR)"; \
+	mkdir -p "$(GENERATED_DIR)"; \
+	find "$$stage_dir" -maxdepth 1 -mindepth 1 -not -name Semantico.cpp -exec mv '{}' "$(GENERATED_DIR)" \; ;\
+	rm -rf "$$stage_dir"; \
 	trap - EXIT INT TERM; \
 	echo "Conteudo de $(GENERATED_DIR)/ atualizado a partir de $$zip_path"
 
