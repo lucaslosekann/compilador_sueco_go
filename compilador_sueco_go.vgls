@@ -198,12 +198,12 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 <scope> ::= DEL_CR_BRACKET_LFT <stmt_list> DEL_CR_BRACKET_RHT | DEL_CR_BRACKET_LFT DEL_CR_BRACKET_RHT;
 
 //FUNCTION DECLARATION
-<typed_id> ::= ID <type_with_array>;
+<typed_id> ::= ID #5 <type_with_array> #6;
 <typed_id_list> ::= <typed_id_list> DEL_COMMA <typed_id> | <typed_id>;
-<fn_decl> ::= KW_FUNCTION ID DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <type_with_array> <scope>
-           | KW_FUNCTION ID DEL_PAREN_LFT DEL_PAREN_RHT <type_with_array> <scope>
-           | KW_FUNCTION ID DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <scope>
-           | KW_FUNCTION ID DEL_PAREN_LFT DEL_PAREN_RHT <scope>;
+<fn_decl> ::= KW_FUNCTION ID #4 DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <type_with_array> #7 <scope>
+           | KW_FUNCTION ID #4 DEL_PAREN_LFT DEL_PAREN_RHT <type_with_array> #7 <scope>
+           | KW_FUNCTION ID #4 DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT #8 <scope>
+           | KW_FUNCTION ID #4 DEL_PAREN_LFT DEL_PAREN_RHT #8 <scope>;
 
 //FUNCTION CALL
 <fn_call> ::= ID DEL_PAREN_LFT DEL_PAREN_RHT | ID DEL_PAREN_LFT <exp_list> DEL_PAREN_RHT;
@@ -235,9 +235,9 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 //VAR DECLARATION
 <type> ::= KW_INT | KW_FLOAT | KW_CHAR | KW_STRING | KW_BOOL;
 <int> ::= LIT_INT_DEC | LIT_INT_HEX | LIT_INT_BIN;
-<type_with_array> ::= <type> | DEL_SQ_BRACKET_LFT <int> DEL_SQ_BRACKET_RHT <type>;
-<id_list> ::= <id_list> DEL_COMMA ID | ID;
-<var_decl> ::= KW_VAR <id_list> <type_with_array> <var_decl_end>;
+<type_with_array> ::= <type> | DEL_SQ_BRACKET_LFT <int> #3 DEL_SQ_BRACKET_RHT <type>;
+<id_list> ::= <id_list> DEL_COMMA ID #1 | ID #1;
+<var_decl> ::= KW_VAR <id_list> <type_with_array> #2 <var_decl_end>;
 <var_decl_end> ::= DEL_SEMICOLON | ATTR_OP_EQ <exp_list> DEL_SEMICOLON;
 
 //VAR ATTRIBUTION
@@ -272,6 +272,7 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 <op_bitwise> ::= BIT_OP_SH_LFT | BIT_OP_SH_RHT;
 <op_arit_baixa> ::= ARTM_OP_PLUS | ARTM_OP_MINUS;
 <op_arit_alta> ::= ARTM_OP_MUL | ARTM_OP_DIV | ARTM_OP_MOD;
+
 
 
 #SimulatorText

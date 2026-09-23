@@ -1,79 +1,10 @@
-variabel idade,contador heltal = 18, 0;
-variabel altura,peso flyttal = 1.70, 65.5;
-variabel nome,sobrenome text = "Lais", "Blum";
-variabel ativo,habilitado intelagom = ja, nej;
-variabel letra tecken = 'A';
+variabel idade,contador heltal;
+variabel nomes [10]text;
 
-variabel numeros [10]heltal;
-
-idade = 20;
-contador = idade plus 2;
-
-numeros[0] = idade;
-numeros[1] = contador gånger 2;
-numeros[2] = 0x1A;
-numeros[3] = 0b1010;
-
-om 1 och 1{
-	variabel var,s,g[0x1A010]heltal = 1, c[2 plus 2];
+funktion somar(valor heltal, numeros [4]heltal) heltal {
+    ge valor;
 }
 
-annars {
-	variabel var,s,g    [0x1A010] heltal = 2, c[2 minus 2];
+funktion mostrar(mensagem text) {
+    std_skriva(mensagem);
 }
-
-om idade större 18 {
-    contador = contador plus 1;
-}
-
-om ativo och habilitado {
-    contador = contador plus 1;
-} annars {
-    contador = contador minus 1;
-}
-
-medan contador mindre 30 {
-    contador = contador plus 1;
-}
-
-gör {
-    contador = contador minus 1;
-} medan contador större 0;
-
-för variabel i heltal = 0; i mindre 10; i++ {
-    numeros[i] = i plus 1;
-}
-
-
-std_läsa();
-variabel a text = std_läsa();
-numeros[9] = std_läsa();
-std_skriva(idade);
-std_skriva(numeros[0]);
-std_skriva((numeros[0] plus numeros[1]) gånger 2);
-
-funktion calcula(parametro1 text, parametro2 heltal) heltal {
-    variabel resultado heltal = parametro2 plus 10;
-    std_skriva(resultado);
-}
-
-calcula("teste");
-
-
-funktion calcular(parametro1 text, parametro2 heltal) heltal {
-    variabel resultado heltal = parametro2 plus 10;
-    ge resultado;
-}
-std_skriva(calcular());
-
-{
-  variabel x heltal = 10;
-  variabel y heltal = 5;
-}
-
-
-variabel p heltal = 1;
-variabel h heltal = 6;
-variabel g heltal = 3;
-
-variabel resultado heltal = minus x plus 8.8 minus inte x gånger 2 delat bitinte y rest 3 vänster 7 olika y höger 3 eller (x mindrelika 3 och y större 8) biteller p bitoch (h bitxor g);
