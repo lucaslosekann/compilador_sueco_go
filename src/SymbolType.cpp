@@ -23,17 +23,19 @@ SymbolType symbolTypeFromToken(const GalsGenerated::Token &token) {
 const char *symbolTypeToString(SymbolType type) {
     switch (type) {
     case SymbolType::INT:
-        return "inteiro";
-    case SymbolType::CHAR:
-        return "caractere";
-    case SymbolType::STRING:
-        return "texto";
+        return "heltal";
     case SymbolType::FLOAT:
-        return "real";
+        return "flyttal";
+    case SymbolType::CHAR:
+        return "tecken";
+    case SymbolType::STRING:
+        return "text";
     case SymbolType::BOOL:
-        return "booleano";
+        return "intelagom";
     case SymbolType::VOID:
         return "sem retorno";
+    case SymbolType::ANY:
+        return "qualquer";
     }
 
     return "desconhecido";
