@@ -121,10 +121,10 @@ DEL_CR_BRACKET_LFT: "{"
 DEL_CR_BRACKET_RHT: "}"
 
 //Comentários de uma linha (1 ponto)
-COMMENT: [/][/].*
+: [/][/].*
 
 //Comentário de múltiplas linhas (2 pontos)
-COMMENT_MULTI_LINE: [/]\*([^\*]|\*+[^\*/])*\*+[/]
+: [/]\*([^\*]|\*+[^\*/])*\*+[/]
 
 //Literais (1 ponto)
 LIT_INT_HEX: 0x[0-9A-Fa-f]+
@@ -189,89 +189,100 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 <op_bitwise>
 <op_arit_baixa>
 <op_arit_alta>
+<fn_body>
+<attr_target>
 #Grammar
 //Statement
 <stmt_list> ::= <stmt_list> <stmt> | <stmt>;
 <stmt> ::=  <var_decl> | <conditional> | <conditional_with_else> | <do_while> | <while> | <for> | <var_attr_stmt> | <fn_call_stmt> | <any_incr_decr_stmt> | <fn_decl> | <scope> | <return_stmt>;
 
-
-<scope> ::= DEL_CR_BRACKET_LFT <stmt_list> DEL_CR_BRACKET_RHT | DEL_CR_BRACKET_LFT DEL_CR_BRACKET_RHT;
+//BLOCO: #14 abre escopo, #11 fecha escopo
+<scope> ::= DEL_CR_BRACKET_LFT #14 <stmt_list> DEL_CR_BRACKET_RHT #11 | DEL_CR_BRACKET_LFT #14 DEL_CR_BRACKET_RHT #11;
 
 //FUNCTION DECLARATION
+//#4 declara a funcao e abre o escopo dela; #5/#6 declaram os parametros; #7/#8 tipo de retorno
 <typed_id> ::= ID #5 <type_with_array> #6;
 <typed_id_list> ::= <typed_id_list> DEL_COMMA <typed_id> | <typed_id>;
-<fn_decl> ::= KW_FUNCTION ID #4 DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <type_with_array> #7 <scope>
-           | KW_FUNCTION ID #4 DEL_PAREN_LFT DEL_PAREN_RHT <type_with_array> #7 <scope>
-           | KW_FUNCTION ID #4 DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT #8 <scope>
-           | KW_FUNCTION ID #4 DEL_PAREN_LFT DEL_PAREN_RHT #8 <scope>;
+//corpo da funcao usa o mesmo escopo dos parametros; #11 fecha o escopo da funcao
+<fn_body> ::= DEL_CR_BRACKET_LFT <stmt_list> DEL_CR_BRACKET_RHT #11 | DEL_CR_BRACKET_LFT DEL_CR_BRACKET_RHT #11;
+<fn_decl> ::= KW_FUNCTION ID #4 DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT <type_with_array> #7 <fn_body>
+           | KW_FUNCTION ID #4 DEL_PAREN_LFT DEL_PAREN_RHT <type_with_array> #7 <fn_body>
+           | KW_FUNCTION ID #4 DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT #8 <fn_body>
+           | KW_FUNCTION ID #4 DEL_PAREN_LFT DEL_PAREN_RHT #8 <fn_body>;
 
-//FUNCTION CALL
-<fn_call> ::= ID DEL_PAREN_LFT DEL_PAREN_RHT | ID DEL_PAREN_LFT <exp_list> DEL_PAREN_RHT;
+//FUNCTION CALL: #22 busca a funcao, #27 confere os argumentos
+<fn_call> ::= ID #22 DEL_PAREN_LFT DEL_PAREN_RHT #27 | ID #22 DEL_PAREN_LFT <exp_list> DEL_PAREN_RHT #27;
 
-//RETURN
-<return_stmt> ::= KW_RETURN <exp> DEL_SEMICOLON | KW_RETURN DEL_SEMICOLON;
+//RETURN: #12 confere o tipo retornado, #13 retorno vazio
+<return_stmt> ::= KW_RETURN <exp> #12 DEL_SEMICOLON | KW_RETURN #13 DEL_SEMICOLON;
 
 //READ STDIN
-<call_read_std> ::= KW_READ_STDIN DEL_PAREN_LFT DEL_PAREN_RHT;
+<call_read_std> ::= KW_READ_STDIN DEL_PAREN_LFT DEL_PAREN_RHT #28;
 
 //WRITE STDOUT
-<call_write_std> ::= KW_WRITE_STDOUT DEL_PAREN_LFT <exp> DEL_PAREN_RHT;
+<call_write_std> ::= KW_WRITE_STDOUT DEL_PAREN_LFT <exp> #29 DEL_PAREN_RHT;
 
 <fn_call_stmt> ::= <fn_call> DEL_SEMICOLON | <call_read_std> DEL_SEMICOLON | <call_write_std> DEL_SEMICOLON;
 
-//FOR
-<for> ::= KW_FOR <var_decl> <exp> DEL_SEMICOLON  <any_incr_decr> <scope> ;
+//FOR: #15 abre o escopo do cabecalho, #16 condicao deve ser intelagom
+<for> ::= KW_FOR #15 <var_decl> <exp> #16 DEL_SEMICOLON  <any_incr_decr> <scope> #11;
 
 //DO WHILE
-<do_while> ::= KW_DO <scope> KW_WHILE <exp> DEL_SEMICOLON;
+<do_while> ::= KW_DO <scope> KW_WHILE <exp> #16 DEL_SEMICOLON;
 
 //WHILE
-<while> ::= KW_WHILE <exp> <scope>;
+<while> ::= KW_WHILE <exp> #16 <scope>;
 
 //IF/ELSE
-<conditional> ::= KW_IF <exp> <scope>;
+<conditional> ::= KW_IF <exp> #16 <scope>;
 <conditional_with_else> ::= <conditional> KW_ELSE <scope>;
 
-//VAR DECLARATION
+//VAR DECLARATION: #1 guarda ids, #3 tamanho do vetor, #2 insere na tabela
+//#9 inicio da lista de valores, #10 confere e inicializa
 <type> ::= KW_INT | KW_FLOAT | KW_CHAR | KW_STRING | KW_BOOL;
 <int> ::= LIT_INT_DEC | LIT_INT_HEX | LIT_INT_BIN;
 <type_with_array> ::= <type> | DEL_SQ_BRACKET_LFT <int> #3 DEL_SQ_BRACKET_RHT <type>;
 <id_list> ::= <id_list> DEL_COMMA ID #1 | ID #1;
 <var_decl> ::= KW_VAR <id_list> <type_with_array> #2 <var_decl_end>;
-<var_decl_end> ::= DEL_SEMICOLON | ATTR_OP_EQ <exp_list> DEL_SEMICOLON;
+<var_decl_end> ::= DEL_SEMICOLON | ATTR_OP_EQ #9 <exp_list> #10 DEL_SEMICOLON;
 
-//VAR ATTRIBUTION
-<attr_id_list> ::= <attr_id_list> DEL_COMMA <id_id_array_idx> | <id_id_array_idx>;
-<var_attr> ::= <attr_id_list> ATTR_OP_EQ <exp_list>;
+//VAR ATTRIBUTION: #17 alvo da atribuicao, #18 indice do alvo, #19 confere tipos e inicializa
+<attr_target> ::= ID #17 | ID #17 DEL_SQ_BRACKET_LFT <exp> #18 DEL_SQ_BRACKET_RHT;
+<attr_id_list> ::= <attr_id_list> DEL_COMMA <attr_target> | <attr_target>;
+<var_attr> ::= <attr_id_list> ATTR_OP_EQ #9 <exp_list> #19;
 <var_attr_stmt> ::= <var_attr> DEL_SEMICOLON;
-//EXP
 
-<incr_prefix> ::= ATTR_INCR ID;
-<decr_prefix> ::= ATTR_DECR ID;
-<incr_postfix> ::= ID ATTR_INCR;
-<decr_postfix> ::= ID ATTR_DECR;
+//INCREMENTO/DECREMENTO: #23 (pos-fixado) e #24 (pre-fixado)
+<incr_prefix> ::= ATTR_INCR ID #24;
+<decr_prefix> ::= ATTR_DECR ID #24;
+<incr_postfix> ::= ID #23 ATTR_INCR;
+<decr_postfix> ::= ID #23 ATTR_DECR;
 <any_incr_decr> ::= <incr_prefix> | <decr_prefix> | <incr_postfix> | <decr_postfix>;
 <any_incr_decr_stmt> ::= <any_incr_decr> DEL_SEMICOLON;
-<id_id_array_idx> ::= ID | ID DEL_SQ_BRACKET_LFT <exp> DEL_SQ_BRACKET_RHT;
-<exp_list> ::= <exp_list> DEL_COMMA <exp> | <exp>;
-<exp>  ::= <exp> LOG_OP_OR <exp1> | <exp1>;
-<exp1> ::= <exp1> LOG_OP_AND <exp2> | <exp2>;
-<exp2> ::= <exp2> BIT_OP_OR <exp3> | <exp3>;
-<exp3> ::= <exp3> BIT_OP_XOR <exp4> | <exp4>;
-<exp4> ::= <exp4> BIT_OP_AND <exp5> | <exp5>;
-<exp5> ::= <exp5> <op_rel> <exp6> | <exp6>;
-<exp6> ::= <exp6> <op_bitwise> <exp7> | <exp7>;
-<exp7> ::= <exp7> <op_arit_baixa> <exp8> | <exp8>;
-<exp8> ::= <exp8> <op_arit_alta> <exp9> | <exp9> ;
-<exp9> ::= <op_neg> <exp10> | <exp10>;
-<exp10> ::= LIT_INT_HEX | LIT_INT_BIN | LIT_INT_DEC | LIT_FLOAT | LIT_INT_DEC | LIT_CHAR | LIT_STRING 
-| KW_TRUE | KW_FALSE | <fn_call> | <call_read_std> | <call_write_std> | <any_incr_decr> | <id_id_array_idx> | DEL_PAREN_LFT <exp> DEL_PAREN_RHT;
 
-<op_rel> ::= REL_OP_GT_EQ | REL_OP_LT_EQ | REL_OP_EQ | REL_OP_NOT_EQ | REL_OP_GT | REL_OP_LT;
-<op_neg> ::= ARTM_OP_MINUS | BIT_OP_NOT | LOG_OP_NOT;
-<op_bitwise> ::= BIT_OP_SH_LFT | BIT_OP_SH_RHT;
-<op_arit_baixa> ::= ARTM_OP_PLUS | ARTM_OP_MINUS;
-<op_arit_alta> ::= ARTM_OP_MUL | ARTM_OP_DIV | ARTM_OP_MOD;
+//EXP: #20 uso de id, #21 indice de vetor, #30 literal, #31 operador
+//#32..#40 operacao binaria (uma acao por nivel de precedencia), #41 operacao unaria
+//#25 resultado de chamada, #26 resultado de incremento
+<id_id_array_idx> ::= ID #20 | ID #20 DEL_SQ_BRACKET_LFT <exp> #21 DEL_SQ_BRACKET_RHT;
+<exp_list> ::= <exp_list> DEL_COMMA <exp> | <exp>;
+<exp>  ::= <exp> LOG_OP_OR #31 <exp1> #32 | <exp1>;
+<exp1> ::= <exp1> LOG_OP_AND #31 <exp2> #33 | <exp2>;
+<exp2> ::= <exp2> BIT_OP_OR #31 <exp3> #34 | <exp3>;
+<exp3> ::= <exp3> BIT_OP_XOR #31 <exp4> #35 | <exp4>;
+<exp4> ::= <exp4> BIT_OP_AND #31 <exp5> #36 | <exp5>;
+<exp5> ::= <exp5> <op_rel> <exp6> #37 | <exp6>;
+<exp6> ::= <exp6> <op_bitwise> <exp7> #38 | <exp7>;
+<exp7> ::= <exp7> <op_arit_baixa> <exp8> #39 | <exp8>;
+<exp8> ::= <exp8> <op_arit_alta> <exp9> #40 | <exp9> ;
+<exp9> ::= <op_neg> <exp10> #41 | <exp10>;
+<exp10> ::= LIT_INT_HEX #30 | LIT_INT_BIN #30 | LIT_INT_DEC #30 | LIT_FLOAT #30 | LIT_CHAR #30 | LIT_STRING #30
+| KW_TRUE #30 | KW_FALSE #30 | <fn_call> #25 | <call_read_std> #25 | <call_write_std> #25 | <any_incr_decr> #26 | <id_id_array_idx> | DEL_PAREN_LFT <exp> DEL_PAREN_RHT;
+
+<op_rel> ::= REL_OP_GT_EQ #31 | REL_OP_LT_EQ #31 | REL_OP_EQ #31 | REL_OP_NOT_EQ #31 | REL_OP_GT #31 | REL_OP_LT #31;
+<op_neg> ::= ARTM_OP_MINUS #31 | BIT_OP_NOT #31 | LOG_OP_NOT #31;
+<op_bitwise> ::= BIT_OP_SH_LFT #31 | BIT_OP_SH_RHT #31;
+<op_arit_baixa> ::= ARTM_OP_PLUS #31 | ARTM_OP_MINUS #31;
+<op_arit_alta> ::= ARTM_OP_MUL #31 | ARTM_OP_DIV #31 | ARTM_OP_MOD #31;
 
 
 
