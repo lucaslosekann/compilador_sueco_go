@@ -5,7 +5,9 @@
 #include "SymbolModality.h"
 #include "SymbolType.h"
 #include "file_handler.h"
+#include <fstream>
 #include <iomanip>
+#include <sstream>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -100,6 +102,29 @@ void printWarnings(const GalsGenerated::Semantico &sem, const std::string &sourc
     }
 }
 
+// Codigo BIP: no terminal imprime e salva <arquivo>.asm; na IDE envia linhas "@ASM|..."
+void printProgram(const GalsGenerated::Semantico &sem, const std::string &sourcePath, bool ideMode) {
+    const std::string program = sem.generateProgram();
+
+    if (ideMode) {
+        std::istringstream lines(program);
+        std::string line;
+        while (std::getline(lines, line)) std::cout << "@ASM|" << line << '\n';
+        return;
+    }
+
+    std::string asmPath = sourcePath;
+    const auto dot = asmPath.find_last_of('.');
+    const auto slash = asmPath.find_last_of("/\\");
+    if (dot != std::string::npos && (slash == std::string::npos || dot > slash)) asmPath.erase(dot);
+    asmPath += ".asm";
+
+    std::ofstream file(asmPath);
+    file << program;
+
+    std::cout << "\nCodigo BIP (salvo em " << asmPath << "):\n" << program;
+}
+
 } // namespace
 
 int main(int argc, char *argv[]) {
@@ -143,6 +168,7 @@ int main(int argc, char *argv[]) {
         sem.finish();
 
         printSemanticResult();
+        printProgram(sem, path, ideMode);
         std::cout << "\nCompilado com sucesso!" << std::endl;
     } catch (const GalsGenerated::LexicalError &err) {
         const int position = err.getPosition();
