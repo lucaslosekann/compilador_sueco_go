@@ -252,11 +252,11 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 <var_attr> ::= <attr_id_list> ATTR_OP_EQ #9 <exp_list> #19;
 <var_attr_stmt> ::= <var_attr> DEL_SEMICOLON;
 
-//INCREMENTO/DECREMENTO: #23 (pos-fixado) e #24 (pre-fixado)
-<incr_prefix> ::= ATTR_INCR ID #24;
-<decr_prefix> ::= ATTR_DECR ID #24;
-<incr_postfix> ::= ID #23 ATTR_INCR;
-<decr_postfix> ::= ID #23 ATTR_DECR;
+//INCREMENTO/DECREMENTO: #23 (pos-fixado) e #24 (pre-fixado); #42 gera ++, #43 gera --
+<incr_prefix> ::= ATTR_INCR ID #24 #42;
+<decr_prefix> ::= ATTR_DECR ID #24 #43;
+<incr_postfix> ::= ID #23 ATTR_INCR #42;
+<decr_postfix> ::= ID #23 ATTR_DECR #43;
 <any_incr_decr> ::= <incr_prefix> | <decr_prefix> | <incr_postfix> | <decr_postfix>;
 <any_incr_decr_stmt> ::= <any_incr_decr> DEL_SEMICOLON;
 
