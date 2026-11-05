@@ -1,6 +1,7 @@
 #ifndef SEMANTICO_H
 #define SEMANTICO_H
 
+#include "CodeGenerator.h"
 #include "SemanticError.h"
 #include "SemanticTable.h"
 #include "Symbol.h"
@@ -26,9 +27,11 @@ struct ExprType {
     SymbolType type;
     bool isVector;    // vetor usado sem indice (ex.: passado como argumento)
     std::string name; // nome do identificador, quando houver (para mensagens)
+    AsmOperand asmOperand; // como gerar o valor no BIP (T4)
 
-    ExprType(SymbolType type = SymbolType::VOID, bool isVector = false, std::string name = "")
-        : type(type), isVector(isVector), name(std::move(name)) {}
+    ExprType(SymbolType type = SymbolType::VOID, bool isVector = false, std::string name = "",
+             AsmOperand asmOperand = AsmOperand())
+        : type(type), isVector(isVector), name(std::move(name)), asmOperand(std::move(asmOperand)) {}
 };
 
 class Semantico {
@@ -42,6 +45,7 @@ class Semantico {
         std::size_t symbol;
         bool indexed;
         int position;
+        AsmOperand index;
     };
 
     struct CallFrame {
@@ -76,6 +80,11 @@ class Semantico {
     ExprType lastCallResult{SymbolType::VOID};
     ExprType lastIncrDecrResult{SymbolType::INT};
 
+    // geracao de codigo (T4)
+    CodeGenerator codeGenerator;
+    int currentPosition = 0;
+    std::optional<std::size_t> pendingIncrDecr;
+
     std::vector<SemanticWarning> warnings;
     std::set<std::size_t> warnedUninitialized;
 
@@ -98,6 +107,9 @@ class Semantico {
     void warnIfUninitialized(std::size_t symbol, int position);
     void warn(const std::string &message, int position);
 
+    std::string asmName(std::size_t symbol) const;
+    void updateCodeGeneration();
+
     void binaryOperation(int position);
     void unaryOperation(int position);
 
@@ -112,6 +124,9 @@ class Semantico {
     const SymbolTable &getSymbolTable() const;
     const std::vector<SemanticWarning> &getWarnings() const;
     std::string scopeName(int scope) const;
+
+    // Codigo assembly BIP do programa (T4)
+    std::string generateProgram() const;
 };
 
 } // namespace GalsGenerated

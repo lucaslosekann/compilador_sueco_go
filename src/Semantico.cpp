@@ -91,9 +91,42 @@ SemanticTable::UnaryOperation unaryOperationFor(TokenId token) {
     }
 }
 
+// Valor de um literal inteiro (decimal, 0x hexadecimal, 0b binario)
+int parseIntLiteral(const Token &token) {
+    std::string digits = token.getLexeme();
+    int base = 10;
+    if (token.getId() == t_LIT_INT_HEX) {
+        digits = digits.substr(2);
+        base = 16;
+    } else if (token.getId() == t_LIT_INT_BIN) {
+        digits = digits.substr(2);
+        base = 2;
+    }
+
+    try {
+        return static_cast<int>(std::stoll(digits, nullptr, base));
+    } catch (const std::exception &) {
+        throw SemanticError("Literal inteiro invalido", token.getPosition());
+    }
+}
+
 } // namespace
 
-Semantico::Semantico() { scopeStack.push_back(0); }
+Semantico::Semantico()
+    : codeGenerator([this](const std::string &message) { warn(message, currentPosition); }) {
+    scopeStack.push_back(0);
+}
+
+std::string Semantico::asmName(std::size_t symbol) const {
+    return codeGenerator.asmName(symbolTable, symbol, [this](int scope) { return scopeName(scope); });
+}
+
+std::string Semantico::generateProgram() const {
+    return codeGenerator.program(symbolTable, [this](int scope) { return scopeName(scope); });
+}
+
+// Sub-rotinas so terao codigo no T6: dentro delas a geracao fica desligada
+void Semantico::updateCodeGeneration() { codeGenerator.setEnabled(functionStack.empty()); }
 
 // ---------------------------------------------------------------------------
 // Escopos
@@ -120,6 +153,7 @@ void Semantico::closeScope() {
 
     if (symbolTable.getScope(currentScope()).function.has_value()) functionStack.pop_back();
     scopeStack.pop_back();
+    updateCodeGeneration();
 }
 
 // ---------------------------------------------------------------------------
@@ -255,7 +289,8 @@ void Semantico::binaryOperation(int position) {
                             op.position);
     }
 
-    typeStack.push_back({static_cast<SymbolType>(result)});
+    typeStack.push_back(ExprType(static_cast<SymbolType>(result), false, "",
+                                 codeGenerator.binary(left.asmOperand, op.lexeme, right.asmOperand)));
 }
 
 void Semantico::unaryOperation(int position) {
@@ -275,7 +310,8 @@ void Semantico::unaryOperation(int position) {
         throw SemanticError("Operacao '" + op.lexeme + "' invalida para " + describe(operand), op.position);
     }
 
-    typeStack.push_back({static_cast<SymbolType>(result)});
+    typeStack.push_back(
+        ExprType(static_cast<SymbolType>(result), false, "", codeGenerator.unary(op.lexeme, operand.asmOperand)));
 }
 
 // ---------------------------------------------------------------------------
@@ -286,6 +322,7 @@ void Semantico::executeAction(int action, const Token *token) {
     if (token == nullptr) throw SemanticError("Acao semantica executada sem token");
 
     const int pos = token->getPosition();
+    currentPosition = pos;
 
     switch (action) {
     // ----- Declaracao de variaveis e vetores -----
@@ -316,6 +353,7 @@ void Semantico::executeAction(int action, const Token *token) {
         const std::size_t function = declare({token->getLexeme(), pos}, SymbolType::VOID, SymbolModality::FUNCTION);
         functionStack.push_back(function);
         openScope(token->getLexeme(), function);
+        updateCodeGeneration();
         pendingVectorSize.reset();
         break;
     }
@@ -378,6 +416,7 @@ void Semantico::executeAction(int action, const Token *token) {
             checkAssignment(symbol.getType(), symbol.isVector(), values[i],
                             "inicializacao de '" + symbol.getId() + "'", pos);
             symbol.markInitialized();
+            codeGenerator.assign(asmName(lastDeclared[i]), values[i].asmOperand);
         }
 
         lastDeclared.clear();
@@ -407,6 +446,7 @@ void Semantico::executeAction(int action, const Token *token) {
         }
 
         checkAssignment(function.getType(), function.isVector(), value, "retorno de '" + function.getId() + "'", pos);
+        codeGenerator.endStatement();
         break;
     }
     case 13: { // ge;
@@ -427,12 +467,13 @@ void Semantico::executeAction(int action, const Token *token) {
         if (condition.isVector || (condition.type != SymbolType::BOOL && condition.type != SymbolType::ANY)) {
             throw SemanticError("Condicao deve ser do tipo intelagom, recebido " + describe(condition), pos);
         }
+        codeGenerator.endStatement(); // desvios: T5
         break;
     }
 
     // ----- Atribuicao -----
     case 17: { // ID que recebe a atribuicao
-        attrTargets.push_back({findVariableOrThrow(*token), false, pos});
+        attrTargets.push_back({findVariableOrThrow(*token), false, pos, AsmOperand()});
         break;
     }
     case 18: { // Indice do vetor que recebe a atribuicao
@@ -443,6 +484,7 @@ void Semantico::executeAction(int action, const Token *token) {
         if (!symbol.isVector()) throw SemanticError("'" + symbol.getId() + "' nao e um vetor", target.position);
         checkIndex(index, symbol.getId(), pos);
         target.indexed = true;
+        target.index = index.asmOperand;
         break;
     }
     case 19: { // Fim da atribuicao: confere tipos e marca como inicializado
@@ -460,6 +502,13 @@ void Semantico::executeAction(int action, const Token *token) {
             checkAssignment(symbol.getType(), leftIsVector, values[i], "atribuicao a '" + symbol.getId() + "'",
                             attrTargets[i].position);
             symbol.markInitialized();
+
+            if (attrTargets[i].indexed) {
+                codeGenerator.assignVector(asmName(attrTargets[i].symbol), attrTargets[i].index,
+                                           values[i].asmOperand);
+            } else {
+                codeGenerator.assign(asmName(attrTargets[i].symbol), values[i].asmOperand);
+            }
         }
 
         attrTargets.clear();
@@ -473,7 +522,8 @@ void Semantico::executeAction(int action, const Token *token) {
 
         symbol.markUsed();
         warnIfUninitialized(index, pos);
-        typeStack.push_back({symbol.getType(), symbol.isVector(), symbol.getId()});
+        typeStack.push_back(
+            ExprType(symbol.getType(), symbol.isVector(), symbol.getId(), AsmOperand::memory(asmName(index))));
         break;
     }
     case 21: { // Indice de vetor usado em expressao: v[<exp>]
@@ -484,6 +534,7 @@ void Semantico::executeAction(int action, const Token *token) {
         if (!vector.isVector) throw SemanticError("'" + vector.name + "' nao e um vetor", pos);
         checkIndex(index, vector.name, pos);
         vector.isVector = false;
+        vector.asmOperand = codeGenerator.vectorElement(vector.asmOperand.address, index.asmOperand);
         break;
     }
 
@@ -525,7 +576,8 @@ void Semantico::executeAction(int action, const Token *token) {
                             "parametro " + std::to_string(i + 1) + " de '" + function.getId() + "'", call.position);
         }
 
-        lastCallResult = {function.getType(), function.isVector()};
+        lastCallResult = ExprType(function.getType(), function.isVector(), "",
+                                  AsmOperand::unsupported("chamada de sub-rotina so sera gerada no T6"));
         break;
     }
     case 25: { // Resultado da chamada usado em expressao
@@ -533,7 +585,7 @@ void Semantico::executeAction(int action, const Token *token) {
         break;
     }
     case 28: { // std_läsa(): valor lido se adapta ao destino
-        lastCallResult = {SymbolType::ANY};
+        lastCallResult = ExprType(SymbolType::ANY, false, "", AsmOperand::memory("$in_port"));
         break;
     }
     case 29: { // Argumento do std_skriva(<exp>)
@@ -541,7 +593,8 @@ void Semantico::executeAction(int action, const Token *token) {
         if (value.type == SymbolType::VOID) {
             throw SemanticError("Sub-rotina sem retorno nao pode ser escrita com std_skriva", pos);
         }
-        lastCallResult = {SymbolType::VOID};
+        codeGenerator.write(value.asmOperand);
+        lastCallResult = ExprType(SymbolType::VOID, false, "", AsmOperand::unsupported("std_skriva nao tem valor"));
         break;
     }
 
@@ -560,7 +613,15 @@ void Semantico::executeAction(int action, const Token *token) {
         symbol.markUsed();
         warnIfUninitialized(index, pos);
         symbol.markInitialized();
-        lastIncrDecrResult = {symbol.getType()};
+        pendingIncrDecr = index;
+        lastIncrDecrResult = ExprType(symbol.getType(), false, "", AsmOperand::memory(asmName(index)));
+        break;
+    }
+    case 42:   // gera ++
+    case 43: { // gera --
+        if (!pendingIncrDecr.has_value()) throw SemanticError("Erro interno: incremento sem variavel", pos);
+        codeGenerator.increment(asmName(*pendingIncrDecr), action == 42 ? 1 : -1);
+        pendingIncrDecr.reset();
         break;
     }
     case 26: { // Resultado do incremento usado em expressao
@@ -574,20 +635,25 @@ void Semantico::executeAction(int action, const Token *token) {
         case t_LIT_INT_DEC:
         case t_LIT_INT_HEX:
         case t_LIT_INT_BIN:
-            typeStack.push_back({SymbolType::INT});
+            typeStack.push_back(
+                ExprType(SymbolType::INT, false, "", AsmOperand::immediate(parseIntLiteral(*token))));
             break;
         case t_LIT_FLOAT:
-            typeStack.push_back({SymbolType::FLOAT});
+            typeStack.push_back(ExprType(SymbolType::FLOAT, false, "",
+                                         AsmOperand::unsupported("o BIP so trabalha com inteiros (flyttal)")));
             break;
         case t_LIT_CHAR:
-            typeStack.push_back({SymbolType::CHAR});
+            typeStack.push_back(ExprType(SymbolType::CHAR, false, "",
+                                         AsmOperand::unsupported("o BIP so trabalha com inteiros (tecken)")));
             break;
         case t_LIT_STRING:
-            typeStack.push_back({SymbolType::STRING});
+            typeStack.push_back(ExprType(SymbolType::STRING, false, "",
+                                         AsmOperand::unsupported("o BIP so trabalha com inteiros (text)")));
             break;
         case t_KW_TRUE:
         case t_KW_FALSE:
-            typeStack.push_back({SymbolType::BOOL});
+            typeStack.push_back(ExprType(SymbolType::BOOL, false, "",
+                                         AsmOperand::immediate(token->getId() == t_KW_TRUE ? 1 : 0)));
             break;
         default:
             throw SemanticError("Literal desconhecido", pos);
