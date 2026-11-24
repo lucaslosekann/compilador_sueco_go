@@ -2,3 +2,4 @@
 /compilador_sueco_go
 /GalsGenerated
 *.asm
+.DS_Store
