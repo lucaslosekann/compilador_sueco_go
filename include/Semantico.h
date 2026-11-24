@@ -125,6 +125,8 @@ class Semantico {
     // Chamado depois da analise sintatica terminar (avisos de nao usados)
     void finish();
 
+    void addWarning(const std::string &message);
+
     const SymbolTable &getSymbolTable() const;
     const std::vector<SemanticWarning> &getWarnings() const;
     std::string scopeName(int scope) const;

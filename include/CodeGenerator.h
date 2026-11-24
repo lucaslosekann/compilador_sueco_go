@@ -1,10 +1,13 @@
 #pragma once
 
 #include "SymbolTable.h"
-#include <functional>
 #include <map>
 #include <string>
 #include <vector>
+
+namespace GalsGenerated {
+class Semantico;
+}
 
 // Operando de uma expressao durante a geracao de codigo BIP.
 // IMMEDIATE: constante (LDI/ADDI...), MEMORY: endereco (LD/ADD...),
@@ -26,7 +29,7 @@ struct AsmOperand {
 
     static AsmOperand immediate(int value);
     static AsmOperand memory(const std::string &address);
-    static AsmOperand computed(std::vector<std::string> code);
+    static AsmOperand computed(const std::vector<std::string> &code);
     static AsmOperand unsupported(const std::string &reason);
 };
 
@@ -40,9 +43,8 @@ struct CallArgument {
 // Gera codigo assembly do processador BIP (Bipide 3.0)
 class CodeGenerator {
   public:
-    using WarningCallback = std::function<void(const std::string &)>;
-
-    explicit CodeGenerator(WarningCallback warn);
+    // O gerador chama o Semantico para guardar os avisos
+    explicit CodeGenerator(GalsGenerated::Semantico *semantico);
 
     // Expressoes (op: plus, minus, bitoch, biteller, bitxor, vanster, hoger, gt, ge, lt, le, eq, ne, ...)
     AsmOperand binary(const AsmOperand &left, const std::string &op, const AsmOperand &right);
@@ -79,14 +81,13 @@ class CodeGenerator {
     void endStatement();
 
     // Nome usado no assembly para um simbolo da tabela
-    std::string asmName(const SymbolTable &table, std::size_t symbol,
-                        const std::function<std::string(int)> &scopeName) const;
+    std::string asmName(const SymbolTable &table, std::size_t symbol) const;
 
     // Programa completo: .data (tabela de simbolos + temporarios) e .text
-    std::string program(const SymbolTable &table, const std::function<std::string(int)> &scopeName) const;
+    std::string program(const SymbolTable &table) const;
 
   private:
-    WarningCallback warn;
+    GalsGenerated::Semantico *semantico;
 
     std::vector<std::vector<std::string>> buffers; // buffers[0] = programa principal
     std::vector<std::string> functionsText;        // codigo das sub-rotinas
@@ -96,11 +97,13 @@ class CodeGenerator {
     int temporaryCount = 0;                     // temporarios usados no comando atual
     std::map<std::string, int> temporaryTotals; // prefixo -> quantidade declarada no .data
 
+    void warn(const std::string &message);
     std::string newTemporary();
     std::vector<std::string> load(const AsmOperand &operand) const;
-    bool canEmit(std::initializer_list<const AsmOperand *> operands, const std::string &command);
+    bool canEmit(const AsmOperand &operand, const std::string &command);
     void emit(const std::vector<std::string> &code);
     void jumpIf(const AsmOperand &condition, const std::string &label, bool whenTrue);
     void branch(const AsmOperand &condition, const std::string &target, bool jumpWhen);
+    void copyArgument(std::vector<std::string> &code, const CallArgument &argument) const;
     AsmOperand asCondition(const AsmOperand &operand) const;
 };

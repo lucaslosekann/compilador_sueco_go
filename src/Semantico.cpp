@@ -160,18 +160,16 @@ int parseIntLiteral(const Token &token) {
 
 } // namespace
 
-Semantico::Semantico()
-    : codeGenerator([this](const std::string &message) { warn(message, currentPosition); }) {
+Semantico::Semantico() : codeGenerator(this) {
     scopeStack.push_back(0);
 }
 
-std::string Semantico::asmName(std::size_t symbol) const {
-    return codeGenerator.asmName(symbolTable, symbol, [this](int scope) { return scopeName(scope); });
-}
+std::string Semantico::asmName(std::size_t symbol) const { return codeGenerator.asmName(symbolTable, symbol); }
 
-std::string Semantico::generateProgram() const {
-    return codeGenerator.program(symbolTable, [this](int scope) { return scopeName(scope); });
-}
+std::string Semantico::generateProgram() const { return codeGenerator.program(symbolTable); }
+
+// Aviso vindo do gerador de codigo (usa a posicao da acao semantica atual)
+void Semantico::addWarning(const std::string &message) { warn(message, currentPosition); }
 
 // ---------------------------------------------------------------------------
 // Escopos

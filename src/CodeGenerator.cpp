@@ -1,4 +1,5 @@
 #include "CodeGenerator.h"
+#include "Semantico.h"
 
 #include <sstream>
 
@@ -30,22 +31,49 @@ std::string asciiName(const std::string &name) {
     return out;
 }
 
-// Operacoes que tem instrucao direta no BIP
-const std::map<std::string, std::string> BINARY_INSTRUCTIONS = {
-    {"plus", "ADD"}, {"minus", "SUB"}, {"bitoch", "AND"}, {"biteller", "OR"}, {"bitxor", "XOR"},
-};
+// Instrucao do BIP de cada operacao (texto vazio se a operacao nao tem instrucao direta)
+std::string instructionFor(const std::string &op) {
+    if (op == "plus") return "ADD";
+    if (op == "minus") return "SUB";
+    if (op == "bitoch") return "AND";
+    if (op == "biteller") return "OR";
+    if (op == "bitxor") return "XOR";
+    return "";
+}
+
+bool isRelational(const std::string &op) {
+    return op == "gt" || op == "ge" || op == "lt" || op == "le" || op == "eq" || op == "ne";
+}
 
 // Desvio quando a comparacao e VERDADEIRA (o BIP olha o resultado da ultima subtracao)
-const std::map<std::string, std::string> JUMP_IF_TRUE = {
-    {"gt", "BGT"}, {"ge", "BGE"}, {"lt", "BLT"}, {"le", "BLE"}, {"eq", "BEQ"}, {"ne", "BNE"},
-};
+std::string jumpWhenTrue(const std::string &relop) {
+    if (relop == "gt") return "BGT";
+    if (relop == "ge") return "BGE";
+    if (relop == "lt") return "BLT";
+    if (relop == "le") return "BLE";
+    if (relop == "eq") return "BEQ";
+    return "BNE";
+}
 
 // Desvio quando a comparacao e FALSA (condicao invertida)
-const std::map<std::string, std::string> JUMP_IF_FALSE = {
-    {"gt", "BLE"}, {"ge", "BLT"}, {"lt", "BGE"}, {"le", "BGT"}, {"eq", "BNE"}, {"ne", "BEQ"},
-};
+std::string jumpWhenFalse(const std::string &relop) {
+    if (relop == "gt") return "BLE";
+    if (relop == "ge") return "BLT";
+    if (relop == "lt") return "BGE";
+    if (relop == "le") return "BGT";
+    if (relop == "eq") return "BNE";
+    return "BEQ";
+}
 
 bool isCommutative(const std::string &instruction) { return instruction != "SUB"; }
+
+// O codigo da expressao tem uma chamada (CALL) dentro?
+bool hasCall(const AsmOperand &value) {
+    for (const std::string &line : value.code) {
+        if (line.substr(0, 5) == "CALL ") return true;
+    }
+    return false;
+}
 
 } // namespace
 
@@ -63,10 +91,10 @@ AsmOperand AsmOperand::memory(const std::string &address) {
     return operand;
 }
 
-AsmOperand AsmOperand::computed(std::vector<std::string> code) {
+AsmOperand AsmOperand::computed(const std::vector<std::string> &code) {
     AsmOperand operand;
     operand.kind = COMPUTED;
-    operand.code = std::move(code);
+    operand.code = code;
     return operand;
 }
 
@@ -77,7 +105,9 @@ AsmOperand AsmOperand::unsupported(const std::string &reason) {
     return operand;
 }
 
-CodeGenerator::CodeGenerator(WarningCallback warn) : warn(std::move(warn)), buffers(1) {}
+CodeGenerator::CodeGenerator(GalsGenerated::Semantico *semantico) : semantico(semantico), buffers(1) {}
+
+void CodeGenerator::warn(const std::string &message) { semantico->addWarning(message); }
 
 // Temporarios do programa principal: _temp1, _temp2...; de uma sub-rotina: _soma_temp1...
 // (assim uma chamada no meio de uma expressao nao estraga os temporarios de quem chamou)
@@ -110,16 +140,16 @@ void CodeGenerator::emit(const std::vector<std::string> &code) {
     text.insert(text.end(), code.begin(), code.end());
 }
 
-bool CodeGenerator::canEmit(std::initializer_list<const AsmOperand *> operands, const std::string &command) {
-    for (const AsmOperand *operand : operands) {
-        if (operand->kind == AsmOperand::UNSUPPORTED || operand->kind == AsmOperand::CONDITION) {
-            const std::string reason = operand->kind == AsmOperand::CONDITION
-                                           ? "condicao (comparacao, och, eller, inte) so pode ser usada em om, medan, gor-medan e for"
-                                           : operand->reason;
-            warn("Geracao de codigo: " + reason + " (" + command + " ignorado)");
-            endStatement();
-            return false;
+// Confere se o operando pode virar codigo. Se nao puder, avisa e o comando e ignorado.
+bool CodeGenerator::canEmit(const AsmOperand &operand, const std::string &command) {
+    if (operand.kind == AsmOperand::UNSUPPORTED || operand.kind == AsmOperand::CONDITION) {
+        std::string reason = operand.reason;
+        if (operand.kind == AsmOperand::CONDITION) {
+            reason = "condicao (comparacao, och, eller, inte) so pode ser usada em om, medan, gor-medan e for";
         }
+        warn("Geracao de codigo: " + reason + " (" + command + " ignorado)");
+        endStatement();
+        return false;
     }
 
     return true;
@@ -160,7 +190,7 @@ AsmOperand CodeGenerator::binary(const AsmOperand &left, const std::string &op, 
     }
 
     // Relacionais: calcula esquerda - direita; o desvio (BGT, BEQ...) decide depois
-    if (JUMP_IF_TRUE.count(op)) {
+    if (isRelational(op)) {
         AsmOperand condition = binary(left, "minus", right);
         condition.kind = AsmOperand::CONDITION;
         condition.relop = op;
@@ -178,12 +208,11 @@ AsmOperand CodeGenerator::binary(const AsmOperand &left, const std::string &op, 
         return AsmOperand::computed(code);
     }
 
-    const auto found = BINARY_INSTRUCTIONS.find(op);
-    if (found == BINARY_INSTRUCTIONS.end()) {
+    const std::string instruction = instructionFor(op);
+    if (instruction == "") {
         return AsmOperand::unsupported("operacao '" + op + "' nao existe no BIP");
     }
 
-    const std::string &instruction = found->second;
     std::vector<std::string> code;
 
     switch (right.kind) {
@@ -269,77 +298,74 @@ AsmOperand CodeGenerator::vectorElement(const std::string &vector, const AsmOper
     return AsmOperand::computed(code);
 }
 
+// Copia um argumento para o parametro (vetor: posicao por posicao, o mesmo $indr serve para os dois)
+void CodeGenerator::copyArgument(std::vector<std::string> &code, const CallArgument &argument) const {
+    if (argument.vectorSize > 0) {
+        for (int i = 0; i < argument.vectorSize; i++) {
+            code.push_back("LDI " + std::to_string(i));
+            code.push_back("STO $indr");
+            code.push_back("LDV " + argument.value.address);
+            code.push_back("STOV " + argument.parameter);
+        }
+    } else {
+        for (const std::string &line : load(argument.value)) code.push_back(line);
+        code.push_back("STO " + argument.parameter);
+    }
+}
+
 // f(a, b)  ->  copia cada argumento no seu parametro / CALL _f   (o retorno fica no ACC)
 //
-// Os parametros ficam em posicoes fixas da memoria. Se um argumento tambem chama uma sub-rotina
-// (ex.: f(1, f(2, 3))), essa chamada reescreve os parametros que ja tinham sido copiados.
-// Entao, quando algum argumento contem um CALL, os argumentos anteriores a ele sao avaliados
-// em temporarios e so copiados para os parametros depois que a ultima chamada interna terminou.
+// Os parametros ficam em posicoes fixas da memoria. Se um argumento tambem chama uma sub-rotina,
+// como em f(1, f(2, 3)), essa chamada de dentro reescreve os parametros que ja tinham sido copiados.
+// Por isso, quando existe chamada dentro dos argumentos, os argumentos anteriores a ela sao calculados
+// em temporarios e so copiados para os parametros depois que a chamada de dentro terminou.
 AsmOperand CodeGenerator::call(const std::string &label, const std::vector<CallArgument> &arguments) {
     std::vector<std::string> code;
+    int total = arguments.size();
 
-    for (const auto &argument : arguments) {
-        const AsmOperand &value = argument.value;
-        if (value.kind == AsmOperand::UNSUPPORTED) return value;
-        if (value.kind == AsmOperand::CONDITION) return AsmOperand::unsupported("comparacao como argumento");
+    for (int i = 0; i < total; i++) {
+        if (arguments[i].value.kind == AsmOperand::UNSUPPORTED) return arguments[i].value;
+        if (arguments[i].value.kind == AsmOperand::CONDITION) {
+            return AsmOperand::unsupported("comparacao como argumento");
+        }
     }
 
-    auto containsCall = [](const AsmOperand &value) {
-        for (const auto &line : value.code) {
-            if (line.rfind("CALL ", 0) == 0) return true;
-        }
-        return false;
-    };
-
-    // indice do ultimo argumento que chama uma sub-rotina (-1 se nenhum)
+    // posicao do ultimo argumento que tambem faz uma chamada (-1 se nenhum faz)
     int lastCall = -1;
-    for (std::size_t i = 0; i < arguments.size(); i++) {
-        if (containsCall(arguments[i].value)) lastCall = static_cast<int>(i);
+    for (int i = 0; i < total; i++) {
+        if (hasCall(arguments[i].value)) lastCall = i;
     }
 
-    auto copyArgument = [&](const CallArgument &argument) {
-        if (argument.vectorSize > 0) {
-            // vetor por copia: copia posicao por posicao (o mesmo $indr serve para os dois vetores)
-            for (int i = 0; i < argument.vectorSize; i++) {
-                code.push_back("LDI " + std::to_string(i));
-                code.push_back("STO $indr");
-                code.push_back("LDV " + argument.value.address);
-                code.push_back("STOV " + argument.parameter);
+    if (lastCall == -1) {
+        // caso comum: copia direto
+        for (int i = 0; i < total; i++) copyArgument(code, arguments[i]);
+    } else {
+        // 1) os argumentos antes da ultima chamada vao para temporarios (vetores nao mudam, ficam para o passo 3)
+        std::vector<std::string> temporaries(total);
+        for (int i = 0; i < lastCall; i++) {
+            if (arguments[i].vectorSize > 0) continue;
+
+            temporaries[i] = newTemporary();
+            for (const std::string &line : load(arguments[i].value)) code.push_back(line);
+            code.push_back("STO " + temporaries[i]);
+        }
+
+        // 2) o argumento da ultima chamada ja vai para o parametro (o resultado esta no ACC)
+        copyArgument(code, arguments[lastCall]);
+
+        // 3) agora os temporarios e os vetores vao para os parametros
+        for (int i = 0; i < lastCall; i++) {
+            if (arguments[i].vectorSize > 0) {
+                copyArgument(code, arguments[i]);
+            } else {
+                code.push_back("LD " + temporaries[i]);
+                code.push_back("STO " + arguments[i].parameter);
             }
-        } else {
-            const auto valueCode = load(argument.value);
-            code.insert(code.end(), valueCode.begin(), valueCode.end());
-            code.push_back("STO " + argument.parameter);
         }
-    };
 
-    std::vector<std::string> temporaries(arguments.size());
-    const std::size_t firstDirect = lastCall < 0 ? 0 : static_cast<std::size_t>(lastCall);
-
-    // fase 1: argumentos que vem antes da ultima chamada interna (vetores nao mudam, ficam para a fase 2)
-    for (std::size_t i = 0; i < firstDirect; i++) {
-        if (arguments[i].vectorSize > 0) continue;
-        temporaries[i] = newTemporary();
-        const auto valueCode = load(arguments[i].value);
-        code.insert(code.end(), valueCode.begin(), valueCode.end());
-        code.push_back("STO " + temporaries[i]);
+        // 4) os argumentos depois da ultima chamada nao chamam nada: copia direto
+        for (int i = lastCall + 1; i < total; i++) copyArgument(code, arguments[i]);
     }
-
-    // o argumento da ultima chamada interna e copiado logo, antes de qualquer outra coisa mexer no ACC
-    if (lastCall >= 0) copyArgument(arguments[lastCall]);
-
-    // fase 2: copia os temporarios (e vetores) para os parametros
-    for (std::size_t i = 0; i < firstDirect; i++) {
-        if (arguments[i].vectorSize > 0) {
-            copyArgument(arguments[i]);
-        } else {
-            code.push_back("LD " + temporaries[i]);
-            code.push_back("STO " + arguments[i].parameter);
-        }
-    }
-
-    // argumentos restantes (sem chamadas): copia direta
-    for (std::size_t i = lastCall < 0 ? 0 : firstDirect + 1; i < arguments.size(); i++) copyArgument(arguments[i]);
 
     code.push_back("CALL " + label);
     return AsmOperand::computed(code);
@@ -351,7 +377,7 @@ AsmOperand CodeGenerator::call(const std::string &label, const std::vector<CallA
 
 // x = <valor>  ->  (valor) / STO x
 void CodeGenerator::assign(const std::string &variable, const AsmOperand &value) {
-    if (!canEmit({&value}, "atribuicao a '" + variable + "'")) return;
+    if (!canEmit(value, "atribuicao a '" + variable + "'")) return;
 
     emit(load(value));
     emit({"STO " + variable});
@@ -360,7 +386,8 @@ void CodeGenerator::assign(const std::string &variable, const AsmOperand &value)
 
 // v[i] = <valor>  ->  (i) / STO $indr / (valor) / STOV v
 void CodeGenerator::assignVector(const std::string &vector, const AsmOperand &index, const AsmOperand &value) {
-    if (!canEmit({&index, &value}, "atribuicao ao vetor '" + vector + "'")) return;
+    const std::string command = "atribuicao ao vetor '" + vector + "'";
+    if (!canEmit(index, command) || !canEmit(value, command)) return;
 
     if (value.kind == AsmOperand::COMPUTED) {
         // o valor usa o ACC (e talvez o $indr): calcula antes e guarda num temporario
@@ -380,7 +407,7 @@ void CodeGenerator::assignVector(const std::string &vector, const AsmOperand &in
 
 // std_skriva(<valor>)  ->  (valor) / STO $out_port
 void CodeGenerator::write(const AsmOperand &value) {
-    if (!canEmit({&value}, "std_skriva")) return;
+    if (!canEmit(value, "std_skriva")) return;
 
     emit(load(value));
     emit({"STO $out_port"});
@@ -395,7 +422,7 @@ void CodeGenerator::increment(const std::string &variable, int delta) {
 
 // f(x); como comando: so executa a chamada
 void CodeGenerator::callStatement(const AsmOperand &call) {
-    if (!canEmit({&call}, "chamada")) return;
+    if (!canEmit(call, "chamada")) return;
 
     emit(call.code);
     endStatement();
@@ -403,7 +430,7 @@ void CodeGenerator::callStatement(const AsmOperand &call) {
 
 // ge <valor>;  ->  (valor) / RETURN 0   (o valor de retorno fica no ACC)
 void CodeGenerator::returnValue(const AsmOperand &value) {
-    if (canEmit({&value}, "ge")) emit(load(value));
+    if (canEmit(value, "ge")) emit(load(value));
     emit({"RETURN 0"});
     endStatement();
 }
@@ -440,33 +467,45 @@ void CodeGenerator::jumpIf(const AsmOperand &condition, const std::string &label
     endStatement();
 }
 
-// Gera o codigo que desvia para `target` quando a condicao vale `jumpWhen` e segue em frente caso contrario.
-// och / eller usam curto-circuito: o segundo operando so e avaliado se o primeiro nao decidiu o resultado.
+// Gera o desvio de uma condicao: pula para `target` quando a condicao for igual a `jumpWhen`
+// (true ou false). Se nao for, o programa segue para a proxima linha.
 void CodeGenerator::branch(const AsmOperand &condition, const std::string &target, bool jumpWhen) {
     if (condition.logic == "not") {
+        // inte: pula quando o valor for o contrario
         branch(condition.parts[0], target, !jumpWhen);
-        return;
-    }
-
-    if (!condition.logic.empty()) {
-        // valor que decide sozinho: falso para "and", verdadeiro para "or"
-        const bool decisive = condition.logic == "or";
-
-        if (jumpWhen == decisive) {
-            branch(condition.parts[0], target, decisive);
-            branch(condition.parts[1], target, decisive);
+    } else if (condition.logic == "and") {
+        if (jumpWhen == false) {
+            // pula se qualquer um dos dois for falso
+            branch(condition.parts[0], target, false);
+            branch(condition.parts[1], target, false);
         } else {
+            // pula so se os dois forem verdadeiros: se o primeiro for falso, passa direto
             const std::string skip = "CURTO" + std::to_string(newLabelNumber());
-            branch(condition.parts[0], skip, decisive);
-            branch(condition.parts[1], target, jumpWhen);
+            branch(condition.parts[0], skip, false);
+            branch(condition.parts[1], target, true);
             label(skip);
         }
-        return;
+    } else if (condition.logic == "or") {
+        if (jumpWhen == true) {
+            // pula se qualquer um dos dois for verdadeiro
+            branch(condition.parts[0], target, true);
+            branch(condition.parts[1], target, true);
+        } else {
+            // pula so se os dois forem falsos: se o primeiro for verdadeiro, passa direto
+            const std::string skip = "CURTO" + std::to_string(newLabelNumber());
+            branch(condition.parts[0], skip, true);
+            branch(condition.parts[1], target, false);
+            label(skip);
+        }
+    } else {
+        // comparacao simples: o codigo da subtracao e o desvio
+        emit(condition.code);
+        if (jumpWhen) {
+            emit({jumpWhenTrue(condition.relop) + " " + target});
+        } else {
+            emit({jumpWhenFalse(condition.relop) + " " + target});
+        }
     }
-
-    emit(condition.code);
-    const auto &jumps = jumpWhen ? JUMP_IF_TRUE : JUMP_IF_FALSE;
-    emit({jumps.at(condition.relop) + " " + target});
 }
 
 void CodeGenerator::beginCapture() { buffers.emplace_back(); }
@@ -501,8 +540,7 @@ void CodeGenerator::endFunction() {
 // Programa
 // ---------------------------------------------------------------------------
 
-std::string CodeGenerator::asmName(const SymbolTable &table, std::size_t symbol,
-                                   const std::function<std::string(int)> &scopeName) const {
+std::string CodeGenerator::asmName(const SymbolTable &table, std::size_t symbol) const {
     const Symbol &s = table.at(symbol);
 
     // Se ja existe um simbolo ANTERIOR com o mesmo nome, este recebe o nome do escopo
@@ -513,11 +551,11 @@ std::string CodeGenerator::asmName(const SymbolTable &table, std::size_t symbol,
     }
 
     std::string name = s.getId();
-    if (repeated) name += "_" + scopeName(s.getScope());
+    if (repeated) name += "_" + table.getScope(s.getScope()).name;
     return asciiName(name);
 }
 
-std::string CodeGenerator::program(const SymbolTable &table, const std::function<std::string(int)> &scopeName) const {
+std::string CodeGenerator::program(const SymbolTable &table) const {
     std::ostringstream out;
 
     // .data: variaveis, vetores e parametros (passagem por copia) + temporarios
@@ -527,14 +565,14 @@ std::string CodeGenerator::program(const SymbolTable &table, const std::function
         const Symbol &symbol = symbols[i];
         if (symbol.isFunction()) continue;
 
-        out << '\t' << asmName(table, i, scopeName) << " : 0";
+        out << '\t' << asmName(table, i) << " : 0";
         if (symbol.isVector()) {
             for (int k = 1; k < *symbol.getVectorSize(); k++) out << ", 0";
         }
         out << '\n';
     }
-    for (const auto &[prefix, total] : temporaryTotals) {
-        for (int t = 1; t <= total; t++) out << '\t' << prefix << t << " : 0\n";
+    for (std::map<std::string, int>::const_iterator it = temporaryTotals.begin(); it != temporaryTotals.end(); it++) {
+        for (int t = 1; t <= it->second; t++) out << '\t' << it->first << t << " : 0\n";
     }
 
     // .text: sub-rotinas primeiro, depois o programa principal
