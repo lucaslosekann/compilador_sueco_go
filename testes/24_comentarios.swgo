@@ -1,0 +1,4 @@
+// comentario de uma linha
+variabel x heltal = 1; /* comentario
+   de varias linhas */
+std_skriva(x);

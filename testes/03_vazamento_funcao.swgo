@@ -1,0 +1,5 @@
+funktion f(p heltal) heltal {
+    variabel local heltal = p;
+    ge local;
+}
+std_skriva(local);

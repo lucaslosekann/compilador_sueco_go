@@ -1,0 +1,2 @@
+variabel usada, esquecida heltal = 1, 2;
+std_skriva(usada);

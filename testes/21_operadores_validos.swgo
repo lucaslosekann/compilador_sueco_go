@@ -1,0 +1,5 @@
+variabel a, b intelagom = ja, nej;
+variabel c intelagom = inte a och (b eller 1 större 2);
+variabel d heltal = bitinte 5 bitoch 3 vänster 1;
+std_skriva(c);
+std_skriva(d);

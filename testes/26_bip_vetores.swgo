@@ -1,0 +1,27 @@
+variabel i, j heltal = 1, 2;
+variabel v [4]heltal;
+variabel x heltal = 10 minus 3 minus 2;
+v[0], v[3] = std_läsa(), std_läsa();
+v[i plus j] = v[0] plus v[i minus 1] plus (x minus (i plus j));
+v[i] = minus (v[3] minus 1);
+v[j] = bitinte 0 bitoch 0xF;
+x = 1 plus 2 vänster 3;
+std_skriva(x höger 1);
+--x;
+x--;
+++i;
+std_skriva(x);
+std_skriva(v[i]);
+std_skriva(v[0] minus v[1] minus v[2] minus v[3]);
+om x större 1 {
+    variabel x heltal = 0b101;
+    std_skriva(x);
+}
+funktion f(p heltal) heltal {
+    variabel q heltal = p plus 1;
+    ge q;
+}
+std_skriva(f(1));
+std_skriva(x gånger 2);
+variabel s text = "oi";
+std_skriva(x);

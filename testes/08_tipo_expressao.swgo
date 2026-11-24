@@ -1,0 +1,2 @@
+variabel s text = "oi";
+variabel r text = s gånger 2;

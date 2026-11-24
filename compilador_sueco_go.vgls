@@ -210,7 +210,7 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
            | KW_FUNCTION ID #4 DEL_PAREN_LFT <typed_id_list> DEL_PAREN_RHT #8 <fn_body>
            | KW_FUNCTION ID #4 DEL_PAREN_LFT DEL_PAREN_RHT #8 <fn_body>;
 
-//FUNCTION CALL: #22 busca a funcao, #27 confere os argumentos
+//FUNCTION CALL: #22 busca a funcao, #27 confere os argumentos e monta o CALL; #44 chamada como comando
 <fn_call> ::= ID #22 DEL_PAREN_LFT DEL_PAREN_RHT #27 | ID #22 DEL_PAREN_LFT <exp_list> DEL_PAREN_RHT #27;
 
 //RETURN: #12 confere o tipo retornado, #13 retorno vazio
@@ -222,20 +222,21 @@ ID: [A-Za-z_åäöÅÄÖ][A-Za-z0-9_åäöÅÄÖ]*
 //WRITE STDOUT
 <call_write_std> ::= KW_WRITE_STDOUT DEL_PAREN_LFT <exp> #29 DEL_PAREN_RHT;
 
-<fn_call_stmt> ::= <fn_call> DEL_SEMICOLON | <call_read_std> DEL_SEMICOLON | <call_write_std> DEL_SEMICOLON;
+<fn_call_stmt> ::= <fn_call> #44 DEL_SEMICOLON | <call_read_std> DEL_SEMICOLON | <call_write_std> DEL_SEMICOLON;
 
 //FOR: #15 abre o escopo do cabecalho, #16 condicao deve ser intelagom
-<for> ::= KW_FOR #15 <var_decl> <exp> #16 DEL_SEMICOLON  <any_incr_decr> <scope> #11;
+//#54 rotulo do inicio, #55 desvio de saida, #56/#57 guardam o incremento, #58 incremento + volta + rotulo do fim
+<for> ::= KW_FOR #15 <var_decl> #54 <exp> #16 #55 DEL_SEMICOLON #56 <any_incr_decr> #57 <scope> #58 #11;
 
-//DO WHILE
-<do_while> ::= KW_DO <scope> KW_WHILE <exp> #16 DEL_SEMICOLON;
+//DO WHILE: #52 rotulo do inicio, #53 volta se a condicao for verdadeira
+<do_while> ::= KW_DO #52 <scope> KW_WHILE <exp> #16 #53 DEL_SEMICOLON;
 
-//WHILE
-<while> ::= KW_WHILE <exp> #16 <scope>;
+//WHILE: #49 rotulo do inicio, #50 desvio de saida, #51 volta + rotulo do fim
+<while> ::= KW_WHILE #49 <exp> #16 #50 <scope> #51;
 
-//IF/ELSE
-<conditional> ::= KW_IF <exp> #16 <scope>;
-<conditional_with_else> ::= <conditional> KW_ELSE <scope>;
+//IF/ELSE: #45 desvio se falso, #46 rotulo do fim, #47 pula o senao + rotulo do senao, #48 rotulo do fim do senao
+<conditional> ::= KW_IF <exp> #16 #45 <scope> #46;
+<conditional_with_else> ::= KW_IF <exp> #16 #45 <scope> KW_ELSE #47 <scope> #48;
 
 //VAR DECLARATION: #1 guarda ids, #3 tamanho do vetor, #2 insere na tabela
 //#9 inicio da lista de valores, #10 confere e inicializa

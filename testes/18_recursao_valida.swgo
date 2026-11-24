@@ -1,0 +1,7 @@
+funktion fat(n heltal) heltal {
+    om n mindrelika 1 {
+        ge 1;
+    }
+    ge n gånger fat(n minus 1);
+}
+std_skriva(fat(5));

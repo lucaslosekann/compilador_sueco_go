@@ -10,6 +10,7 @@
 struct ParameterInfo {
     SymbolType type;
     bool isVector;
+    std::size_t symbol; // indice do parametro na tabela (para a passagem por copia)
 };
 
 // Uma linha da tabela de simbolos.

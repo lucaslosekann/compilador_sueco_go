@@ -1,0 +1,4 @@
+variabel v [5]heltal;
+variabel x heltal = 1;
+v[x] = 2;
+v[1.5] = 3;

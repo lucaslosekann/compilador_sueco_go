@@ -1,0 +1,3 @@
+för variabel i heltal = 0; i mindre 3; i++ {
+}
+std_skriva(i);

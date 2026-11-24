@@ -85,6 +85,11 @@ class Semantico {
     int currentPosition = 0;
     std::optional<std::size_t> pendingIncrDecr;
 
+    // desvios e lacos (T5): cada om/medan/gör/för guarda o numero dos seus rotulos numa pilha
+    AsmOperand lastCondition;
+    std::vector<int> labelStack;
+    std::vector<std::vector<std::string>> forIncrements;
+
     std::vector<SemanticWarning> warnings;
     std::set<std::size_t> warnedUninitialized;
 
@@ -108,7 +113,6 @@ class Semantico {
     void warn(const std::string &message, int position);
 
     std::string asmName(std::size_t symbol) const;
-    void updateCodeGeneration();
 
     void binaryOperation(int position);
     void unaryOperation(int position);

@@ -1,0 +1,29 @@
+variabel n, i, soma, x heltal;
+variabel v [5]heltal;
+n = std_läsa();
+soma = 0;
+för variabel k heltal = 0; k mindre n; k++ {
+    v[k] = std_läsa();
+    om v[k] större 0 {
+        soma = soma plus v[k];
+    } annars {
+        soma = soma minus 1;
+    }
+}
+std_skriva(soma);
+i = 0;
+medan i mindre 3 {
+    variabel j heltal = 0;
+    gör {
+        x = x plus 1;
+        j++;
+    } medan j mindre i;
+    i++;
+}
+std_skriva(x);
+om soma lika 0 {
+    std_skriva(111);
+}
+om n olika 0 {
+    std_skriva(222);
+}

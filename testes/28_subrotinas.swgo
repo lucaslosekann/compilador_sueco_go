@@ -1,0 +1,36 @@
+variabel a, b, r heltal;
+variabel v [3]heltal;
+
+funktion somar(x heltal, y heltal) heltal {
+    ge x plus y;
+}
+
+funktion maior(x heltal, y heltal) heltal {
+    om x större y {
+        ge x;
+    }
+    ge y;
+}
+
+funktion total(w [3]heltal) heltal {
+    variabel s heltal = 0;
+    för variabel i heltal = 0; i mindre 3; i++ {
+        s = s plus w[i];
+    }
+    ge s;
+}
+
+funktion mostrar(valor heltal) {
+    std_skriva(valor);
+}
+
+a = std_läsa();
+b = std_läsa();
+r = somar(a, b);
+mostrar(r);
+mostrar(maior(a, b) minus somar(1, maior(2, b)));
+v[0] = a;
+v[1] = b;
+v[2] = 10;
+std_skriva(total(v));
+std_skriva(a plus somar(b, 1) minus 2);

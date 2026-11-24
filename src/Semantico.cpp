@@ -52,6 +52,54 @@ std::string describeType(SymbolType type, bool isVector) {
 
 std::string describe(const ExprType &expr) { return describeType(expr.type, expr.isVector); }
 
+// Nome do operador usado pelo gerador de codigo (sem acentos)
+std::string asmOperatorName(TokenId token) {
+    switch (token) {
+    case t_ARTM_OP_PLUS:
+        return "plus";
+    case t_ARTM_OP_MINUS:
+        return "minus";
+    case t_ARTM_OP_MUL:
+        return "ganger";
+    case t_ARTM_OP_DIV:
+        return "delat";
+    case t_ARTM_OP_MOD:
+        return "rest";
+    case t_REL_OP_GT:
+        return "gt";
+    case t_REL_OP_GT_EQ:
+        return "ge";
+    case t_REL_OP_LT:
+        return "lt";
+    case t_REL_OP_LT_EQ:
+        return "le";
+    case t_REL_OP_EQ:
+        return "eq";
+    case t_REL_OP_NOT_EQ:
+        return "ne";
+    case t_LOG_OP_AND:
+        return "och";
+    case t_LOG_OP_OR:
+        return "eller";
+    case t_LOG_OP_NOT:
+        return "inte";
+    case t_BIT_OP_AND:
+        return "bitoch";
+    case t_BIT_OP_OR:
+        return "biteller";
+    case t_BIT_OP_XOR:
+        return "bitxor";
+    case t_BIT_OP_NOT:
+        return "bitinte";
+    case t_BIT_OP_SH_LFT:
+        return "vanster";
+    case t_BIT_OP_SH_RHT:
+        return "hoger";
+    default:
+        return "?";
+    }
+}
+
 SemanticTable::Operation binaryOperationFor(TokenId token) {
     switch (token) {
     case t_ARTM_OP_PLUS:
@@ -125,9 +173,6 @@ std::string Semantico::generateProgram() const {
     return codeGenerator.program(symbolTable, [this](int scope) { return scopeName(scope); });
 }
 
-// Sub-rotinas so terao codigo no T6: dentro delas a geracao fica desligada
-void Semantico::updateCodeGeneration() { codeGenerator.setEnabled(functionStack.empty()); }
-
 // ---------------------------------------------------------------------------
 // Escopos
 // ---------------------------------------------------------------------------
@@ -151,9 +196,11 @@ void Semantico::openBlockScope() {
 void Semantico::closeScope() {
     if (scopeStack.size() <= 1) throw SemanticError("Fechamento de escopo sem escopo aberto");
 
-    if (symbolTable.getScope(currentScope()).function.has_value()) functionStack.pop_back();
+    if (symbolTable.getScope(currentScope()).function.has_value()) {
+        functionStack.pop_back();
+        codeGenerator.endFunction();
+    }
     scopeStack.pop_back();
-    updateCodeGeneration();
 }
 
 // ---------------------------------------------------------------------------
@@ -290,7 +337,7 @@ void Semantico::binaryOperation(int position) {
     }
 
     typeStack.push_back(ExprType(static_cast<SymbolType>(result), false, "",
-                                 codeGenerator.binary(left.asmOperand, op.lexeme, right.asmOperand)));
+                                 codeGenerator.binary(left.asmOperand, asmOperatorName(op.token), right.asmOperand)));
 }
 
 void Semantico::unaryOperation(int position) {
@@ -311,7 +358,7 @@ void Semantico::unaryOperation(int position) {
     }
 
     typeStack.push_back(
-        ExprType(static_cast<SymbolType>(result), false, "", codeGenerator.unary(op.lexeme, operand.asmOperand)));
+        ExprType(static_cast<SymbolType>(result), false, "", codeGenerator.unary(asmOperatorName(op.token), operand.asmOperand)));
 }
 
 // ---------------------------------------------------------------------------
@@ -353,7 +400,7 @@ void Semantico::executeAction(int action, const Token *token) {
         const std::size_t function = declare({token->getLexeme(), pos}, SymbolType::VOID, SymbolModality::FUNCTION);
         functionStack.push_back(function);
         openScope(token->getLexeme(), function);
-        updateCodeGeneration();
+        codeGenerator.beginFunction("_" + asmName(function), asmName(function));
         pendingVectorSize.reset();
         break;
     }
@@ -374,7 +421,7 @@ void Semantico::executeAction(int action, const Token *token) {
 
         symbolTable.at(parameter).markInitialized();
         symbolTable.at(parameter).setParameterPosition(static_cast<int>(function.getParameters().size()) + 1);
-        function.addParameter({type, pendingVectorSize.has_value()});
+        function.addParameter({type, pendingVectorSize.has_value(), parameter});
 
         pendingParameter.reset();
         pendingVectorSize.reset();
@@ -446,7 +493,7 @@ void Semantico::executeAction(int action, const Token *token) {
         }
 
         checkAssignment(function.getType(), function.isVector(), value, "retorno de '" + function.getId() + "'", pos);
-        codeGenerator.endStatement();
+        codeGenerator.returnValue(value.asmOperand);
         break;
     }
     case 13: { // ge;
@@ -458,6 +505,7 @@ void Semantico::executeAction(int action, const Token *token) {
                                     describeType(function.getType(), function.isVector()),
                                 pos);
         }
+        codeGenerator.returnVoid();
         break;
     }
 
@@ -467,7 +515,7 @@ void Semantico::executeAction(int action, const Token *token) {
         if (condition.isVector || (condition.type != SymbolType::BOOL && condition.type != SymbolType::ANY)) {
             throw SemanticError("Condicao deve ser do tipo intelagom, recebido " + describe(condition), pos);
         }
-        codeGenerator.endStatement(); // desvios: T5
+        lastCondition = condition.asmOperand; // usada pelo desvio (#45, #50, #53, #55)
         break;
     }
 
@@ -576,8 +624,16 @@ void Semantico::executeAction(int action, const Token *token) {
                             "parametro " + std::to_string(i + 1) + " de '" + function.getId() + "'", call.position);
         }
 
+        // passagem por copia: cada argumento e copiado para o parametro antes do CALL
+        std::vector<CallArgument> copies;
+        for (std::size_t i = 0; i < arguments.size(); i++) {
+            const Symbol &parameter = symbolTable.at(parameters[i].symbol);
+            copies.push_back({arguments[i].asmOperand, asmName(parameters[i].symbol),
+                              parameter.isVector() ? *parameter.getVectorSize() : 0});
+        }
+
         lastCallResult = ExprType(function.getType(), function.isVector(), "",
-                                  AsmOperand::unsupported("chamada de sub-rotina so sera gerada no T6"));
+                                  codeGenerator.call("_" + asmName(call.function), copies));
         break;
     }
     case 25: { // Resultado da chamada usado em expressao
@@ -678,6 +734,97 @@ void Semantico::executeAction(int action, const Token *token) {
     case 41: // minus / inte / bitinte (unario)
         unaryOperation(pos);
         break;
+
+    // ----- Chamada como comando (T6) -----
+    case 44: { // f(x);
+        codeGenerator.callStatement(lastCallResult.asmOperand);
+        break;
+    }
+
+    // ----- om / annars (T5) -----
+    case 45: { // depois da condicao: se for falsa, pula o bloco
+        const int n = codeGenerator.newLabelNumber();
+        labelStack.push_back(n);
+        codeGenerator.jumpIfFalse(lastCondition, "FIMSE" + std::to_string(n));
+        break;
+    }
+    case 46: { // fim do om sem annars
+        codeGenerator.label("FIMSE" + std::to_string(labelStack.back()));
+        labelStack.pop_back();
+        break;
+    }
+    case 47: { // annars: quem executou o om pula o senao
+        const std::string n = std::to_string(labelStack.back());
+        codeGenerator.jump("FIMSENAO" + n);
+        codeGenerator.label("FIMSE" + n);
+        break;
+    }
+    case 48: { // fim do annars
+        codeGenerator.label("FIMSENAO" + std::to_string(labelStack.back()));
+        labelStack.pop_back();
+        break;
+    }
+
+    // ----- medan (T5) -----
+    case 49: { // inicio: rotulo para voltar
+        const int n = codeGenerator.newLabelNumber();
+        labelStack.push_back(n);
+        codeGenerator.label("ENQUANTO" + std::to_string(n));
+        break;
+    }
+    case 50: { // condicao falsa: sai do laco
+        codeGenerator.jumpIfFalse(lastCondition, "FIMENQUANTO" + std::to_string(labelStack.back()));
+        break;
+    }
+    case 51: { // fim do bloco: volta para a condicao
+        const std::string n = std::to_string(labelStack.back());
+        codeGenerator.jump("ENQUANTO" + n);
+        codeGenerator.label("FIMENQUANTO" + n);
+        labelStack.pop_back();
+        break;
+    }
+
+    // ----- gör ... medan (T5) -----
+    case 52: { // inicio: rotulo para voltar
+        const int n = codeGenerator.newLabelNumber();
+        labelStack.push_back(n);
+        codeGenerator.label("FACA" + std::to_string(n));
+        break;
+    }
+    case 53: { // condicao verdadeira: volta para o inicio
+        codeGenerator.jumpIfTrue(lastCondition, "FACA" + std::to_string(labelStack.back()));
+        labelStack.pop_back();
+        break;
+    }
+
+    // ----- för (T5) -----
+    case 54: { // depois da inicializacao: rotulo para voltar
+        const int n = codeGenerator.newLabelNumber();
+        labelStack.push_back(n);
+        codeGenerator.label("PARA" + std::to_string(n));
+        break;
+    }
+    case 55: { // condicao falsa: sai do laco
+        codeGenerator.jumpIfFalse(lastCondition, "FIMPARA" + std::to_string(labelStack.back()));
+        break;
+    }
+    case 56: { // o incremento aparece antes do bloco, mas tem que rodar depois: guarda o codigo dele
+        codeGenerator.beginCapture();
+        break;
+    }
+    case 57: {
+        forIncrements.push_back(codeGenerator.endCapture());
+        break;
+    }
+    case 58: { // fim do bloco: incremento, volta para a condicao e rotulo de saida
+        const std::string n = std::to_string(labelStack.back());
+        codeGenerator.emitCaptured(forIncrements.back());
+        codeGenerator.jump("PARA" + n);
+        codeGenerator.label("FIMPARA" + n);
+        forIncrements.pop_back();
+        labelStack.pop_back();
+        break;
+    }
 
     default:
         throw SemanticError("Acao sem tratamento: #" + std::to_string(action), pos);

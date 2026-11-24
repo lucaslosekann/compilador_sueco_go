@@ -1,0 +1,5 @@
+om ja {
+    variabel interna heltal = 1;
+    std_skriva(interna);
+}
+std_skriva(interna);

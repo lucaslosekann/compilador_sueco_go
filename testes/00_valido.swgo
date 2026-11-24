@@ -1,0 +1,45 @@
+variabel idade, contador heltal = 18, 0;
+variabel altura flyttal = 1.70;
+variabel nome, sobrenome text = "Lais", "Blum";
+variabel ativo intelagom = ja;
+variabel letra tecken = 'A';
+variabel numeros [10]heltal;
+
+funktion somar(a heltal, b heltal) heltal {
+    ge a plus b;
+}
+
+funktion media(v [10]heltal, n heltal) flyttal {
+    variabel soma heltal = 0;
+    för variabel i heltal = 0; i mindre n; i++ {
+        soma = soma plus v[i];
+    }
+    ge soma delat n;
+}
+
+funktion mostrar(msg text) {
+    std_skriva(msg);
+}
+
+numeros[0] = somar(idade, 2);
+contador = std_läsa();
+altura = altura gånger 2;
+altura = idade;
+nome = nome plus " " plus sobrenome plus letra;
+
+om idade större 18 och ativo {
+    mostrar(nome);
+} annars {
+    variabel idade text = "escopo interno";
+    mostrar(idade);
+}
+
+medan contador mindre 30 {
+    contador++;
+}
+
+gör {
+    contador = contador minus 1;
+} medan contador större 0;
+
+std_skriva(media(numeros, 10));

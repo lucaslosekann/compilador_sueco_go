@@ -1,0 +1,8 @@
+variabel x heltal = 1;
+{
+    variabel x heltal = 2;
+    {
+        std_skriva(x);
+    }
+}
+std_skriva(x);

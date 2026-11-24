@@ -1,0 +1,4 @@
+funktion f(v [3]heltal) {
+}
+variabel x heltal = 1;
+f(x);

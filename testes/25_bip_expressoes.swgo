@@ -1,0 +1,16 @@
+variabel a, b, c heltal;
+variabel v [5]heltal;
+a = std_läsa();
+b = std_läsa();
+v[0] = a plus b;
+v[1] = v[0] minus 3;
+c = a plus v[1] minus (b minus 1);
+v[a minus a plus 2] = std_läsa();
+std_skriva(c);
+std_skriva(v[2] plus 10);
+c = (a bitoch 6) biteller (b bitxor 1);
+std_skriva(c vänster 2);
+std_skriva(minus a);
+c++;
+std_skriva(c);
+std_skriva(5);

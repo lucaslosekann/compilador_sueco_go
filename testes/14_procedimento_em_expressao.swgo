@@ -1,0 +1,3 @@
+funktion p() {
+}
+variabel x heltal = p();

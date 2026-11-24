@@ -1,0 +1,4 @@
+funktion f(a heltal, b text) heltal {
+    ge a;
+}
+std_skriva(f(1));
